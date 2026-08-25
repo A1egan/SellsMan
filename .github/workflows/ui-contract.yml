@@ -2,7 +2,7 @@ name: UI contract
 
 on:
   push:
-    branches: [design/crm-ui-workbench]
+    branches: [feat/crm-ui-workbench]
   pull_request:
     branches: [main]
 
