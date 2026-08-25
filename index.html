@@ -72,6 +72,43 @@ body {
   justify-content: flex-end;
 }
 
+.tools-menu-wrap {
+  position: relative;
+}
+
+.tools-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 300;
+  width: 156px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.16);
+}
+
+.tools-menu.show { display: block; }
+
+.tools-menu-item {
+  display: block;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #333;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tools-menu-item:hover { background: #f3f4f6; }
+
 .input-box {
   display: flex;
   align-items: center;
@@ -734,6 +771,9 @@ body {
   padding: 24px;
   width: 420px;
   max-width: 90vw;
+  max-height: 86vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid #e5e7eb;
   box-shadow: 0 12px 40px rgba(0,0,0,0.18);
 }
@@ -1021,19 +1061,24 @@ body {
       <input id="singleAddInput" placeholder="输入用户数字" onkeydown="if(event.key==='Enter')addSingleUser()">
       <button class="btn btn-primary btn-sm" onclick="addSingleUser()">+ 添加</button>
     </div>
-    <button class="btn btn-outline btn-sm" id="batchToggleBtn" onclick="toggleBatchMode()">批量选择</button>
-    <button class="btn btn-outline btn-sm" onclick="showBatchAdd()">批量添加</button>
-    <button class="btn btn-outline btn-sm" id="densityBtn" onclick="toggleDensity()">紧凑视图</button>
-    <button class="btn btn-outline btn-sm" onclick="exportData()">导出CSV</button>
-    <button class="btn btn-outline btn-sm" onclick="backupData()">备份</button>
-    <label class="btn btn-outline btn-sm" style="cursor:pointer;">
-      导入
-      <input type="file" accept=".csv,.txt" style="display:none" onchange="importFile(event)">
-    </label>
-    <label class="btn btn-outline btn-sm" style="cursor:pointer;">
-      恢复
-      <input type="file" accept=".json" style="display:none" onchange="restoreData(event)">
-    </label>
+    <div class="tools-menu-wrap">
+      <button class="btn btn-outline btn-sm" id="toolsMenuBtn" onclick="toggleToolsMenu(event)">菜单 ▾</button>
+      <div class="tools-menu" id="toolsMenu" onclick="event.stopPropagation()">
+        <button class="tools-menu-item" id="batchToggleBtn" onclick="toggleBatchMode(); closeToolsMenu()">批量选择</button>
+        <button class="tools-menu-item" onclick="showBatchAdd(); closeToolsMenu()">批量添加</button>
+        <button class="tools-menu-item" id="densityBtn" onclick="toggleDensity(); closeToolsMenu()">紧凑视图</button>
+        <button class="tools-menu-item" onclick="exportData(); closeToolsMenu()">导出CSV</button>
+        <button class="tools-menu-item" onclick="backupData(); closeToolsMenu()">备份</button>
+        <label class="tools-menu-item" style="cursor:pointer;">
+          导入
+          <input type="file" accept=".csv,.txt" style="display:none" onchange="importFile(event); closeToolsMenu()">
+        </label>
+        <label class="tools-menu-item" style="cursor:pointer;">
+          恢复
+          <input type="file" accept=".json" style="display:none" onchange="restoreData(event); closeToolsMenu()">
+        </label>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1231,6 +1276,22 @@ function init() {
     document.querySelectorAll('.col-filter-menu.show').forEach(m => m.classList.remove('show'));
   });
 }
+
+function toggleToolsMenu(event) {
+  if (event) event.stopPropagation();
+  const menu = document.getElementById('toolsMenu');
+  if (!menu) return;
+  const willOpen = !menu.classList.contains('show');
+  document.querySelectorAll('.col-filter-menu.show').forEach(m => m.classList.remove('show'));
+  menu.classList.toggle('show', willOpen);
+}
+
+function closeToolsMenu() {
+  const menu = document.getElementById('toolsMenu');
+  if (menu) menu.classList.remove('show');
+}
+
+document.addEventListener('click', closeToolsMenu);
 
 function loadData() {
   const raw = localStorage.getItem(STORAGE_KEY);
