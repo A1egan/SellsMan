@@ -3,40 +3,70 @@ import re
 import subprocess
 import tempfile
 
-html = Path('index.html').read_text(encoding='utf-8')
+HTML = Path(__file__).resolve().parents[1] / "index.html"
+TEXT = HTML.read_text(encoding="utf-8")
 
-required = [
-    "const STORAGE_KEY = 'sales_followup_data_v3'",
-    "const TAGS_KEY = 'sales_tags_v1'",
-    'id="toolsMenuBtn"',
-    'id="taskBar"',
-    'id="board"',
-    'id="detailResult"',
-    'id="detailNextTime"',
-    'id="detailNextAction"',
-    'function onDrop(',
-    'function batchMoveSelected(',
-    'function logFollowup(',
-    'function renderTagModal(',
-]
-for token in required:
-    assert token in html, f'missing contract token: {token}'
 
+def require(token: str):
+    assert token in TEXT, f"missing contract token: {token}"
+
+
+# 数据与业务兼容性：这些内容绝不能因为 UI 重构发生变化。
+require("const STORAGE_KEY = 'sales_followup_data_v3';")
+require("const TAGS_KEY = 'sales_tags_v1';")
+for column_id in ["pending", "contacting", "replied", "lowinterest", "silent"]:
+    assert re.search(rf"id:\s*'{column_id}'", TEXT), f"column id changed: {column_id}"
+for field in ["history", "nextFollowUpAt", "nextAction", "lastResult", "lastContactAt"]:
+    require(field)
+for fn in [
+    "addSingleUser", "batchAddUsers", "filterByTag", "setColFilter",
+    "onDrop", "batchMoveSelected", "batchDelete", "exportData",
+    "backupData", "restoreData", "logFollowup", "renderTaskBar",
+    "renderTagModal", "saveDetailNote"
+]:
+    assert re.search(rf"function\s+{fn}\s*\(", TEXT), f"business function missing: {fn}"
+
+# 顶部菜单功能必须保留。
+require('id="toolsMenuBtn"')
+for label in ["批量选择", "批量添加", "紧凑视图", "导出CSV", "备份", "导入", "恢复"]:
+    require(label)
+
+# 新工作台 UI 契约。
 assert re.search(
-    r'\.column-body\s*\{[^}]*grid-template-columns\s*:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)',
-    html,
+    r"\.stats-bar\s*\{[^}]*display\s*:\s*none",
+    TEXT,
     re.S,
-), 'all columns must use a 3-card grid'
-assert 'class="stats-bar"' not in html, 'standalone stats bar should be removed'
-assert 'data-followup-status=' in html, 'cards must expose follow-up status for visual priority'
-assert 'id="detailColumnBadge"' in html, 'detail summary must show current column'
-assert 'id="detailTagSummary"' in html, 'detail summary must show tag summary'
+), "legacy stats strip should be visually removed"
+assert re.search(
+    r"\.column\s*\{[^}]*flex\s*:\s*0\s+0\s+372px",
+    TEXT,
+    re.S,
+), "desktop column should be 372px"
+assert re.search(
+    r"\.column-body\s*\{[^}]*grid-template-columns\s*:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)",
+    TEXT,
+    re.S,
+), "all columns should use three-card grid"
+assert not re.search(
+    r"\.column-body\[data-col=\"pending\"\]\s*\{[^}]*grid-template-columns",
+    TEXT,
+    re.S,
+), "pending column must not have a special grid rule"
+require('data-followup-status="${followupStatus}"')
+for section in ["detail-section-followup", "detail-section-history", "detail-section-profile"]:
+    require(section)
+require('id="detailColumnBadge"')
+require('id="detailFollowupBadge"')
 
-script_match = re.search(r'<script>(.*)</script>', html, re.S)
-assert script_match, 'script block missing'
-with tempfile.NamedTemporaryFile('w', suffix='.js', encoding='utf-8', delete=False) as f:
-    f.write(script_match.group(1))
-    script_path = f.name
-subprocess.run(['node', '--check', script_path], check=True)
+# 详情里的过期活动快捷键不能继续绑死当前工作流。
+assert "25号直播后" not in TEXT, "expired event-specific quick button should be removed"
 
-print('UI contract OK')
+# JavaScript 必须保持语法有效。
+scripts = re.findall(r"<script>(.*?)</script>", TEXT, re.S)
+assert scripts, "inline script missing"
+with tempfile.NamedTemporaryFile("w", suffix=".js", encoding="utf-8", delete=False) as f:
+    f.write("\n".join(scripts))
+    js_path = f.name
+subprocess.run(["node", "--check", js_path], check=True)
+
+print("UI contract OK")
