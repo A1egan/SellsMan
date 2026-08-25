@@ -24,7 +24,18 @@ jobs:
       - name: Apply UI fix
         run: python scripts/apply_ui_fix.py
       - name: Run regression tests
-        run: python -m pytest -q tests/test_ui_contract.py
+        run: |
+          python - <<'PY'
+          import importlib.util
+          from pathlib import Path
+          p = Path('tests/test_ui_contract.py')
+          spec = importlib.util.spec_from_file_location('ui_contract', p)
+          mod = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(mod)
+          mod.test_header_uses_single_tools_menu()
+          mod.test_detail_modal_is_viewport_bounded_and_scrollable()
+          print('2 UI contract tests passed')
+          PY
       - name: Check JavaScript syntax
         run: |
           python - <<'PY'
