@@ -32,6 +32,16 @@ assert 'data-followup-status=' in html, 'cards must expose follow-up status for 
 assert 'id="detailColumnBadge"' in html, 'detail summary must show current column'
 assert 'id="detailTagSummary"' in html, 'detail summary must show tag summary'
 
+# Keep the desktop board itself as the scroll viewport. Otherwise its
+# horizontal scrollbar falls below long columns and the right-most stage is
+# effectively unreachable during normal laptop use.
+workbench = html.split('/* ====== 高密度销售工作台 · 2026-08 ====== */', 1)[1]
+assert re.search(
+    r'\.board\s*\{[^}]*height\s*:\s*calc\(100vh\s*-\s*96px\)[^}]*overflow\s*:\s*auto',
+    workbench,
+    re.S,
+), 'board must be a viewport-height two-axis scroll container'
+
 script_match = re.search(r'<script>(.*)</script>', html, re.S)
 assert script_match, 'script block missing'
 with tempfile.NamedTemporaryFile('w', suffix='.js', encoding='utf-8', delete=False) as f:

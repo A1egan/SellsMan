@@ -1141,8 +1141,14 @@ body {
 .board {
   gap: 10px;
   padding: 12px 16px 18px;
-  min-height: calc(100vh - 96px);
+  height: calc(100vh - 96px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   scroll-padding-left: 16px;
+}
+.tag-filter-bar.show + .board {
+  height: calc(100vh - 130px);
 }
 .column {
   flex: 0 0 372px;
