@@ -1,0 +1,41 @@
+name: Apply CRM workbench UI
+
+on:
+  push:
+    branches: [design/crm-ui-workbench]
+    paths:
+      - scripts/apply_ui_workbench.py
+      - .github/workflows/apply-ui-workbench.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: design/crm-ui-workbench
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply UI transformation
+        run: python scripts/apply_ui_workbench.py
+      - name: Verify UI contract
+        run: python tests/test_ui_contract.py
+      - name: Commit generated UI
+        run: |
+          git config user.name "A1egan"
+          git config user.email "g2j5rd9g8f@privaterelay.appleid.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "No generated changes"
+          else
+            git commit -m "feat: rebuild CRM as dense sales workbench"
+            git push origin HEAD:design/crm-ui-workbench
+          fi
