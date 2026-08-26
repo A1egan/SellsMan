@@ -21,3 +21,10 @@ jobs:
       - run: python tests/test_workspace_v2_contract.py
       - run: node tests/test_workspace_v2_core.js
       - run: bash tests/test_workspace_v2_browser.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: workspace-v2-screenshots
+          path: /tmp/workspace-v2-shots/*.png
+          if-no-files-found: ignore
+          retention-days: 3
