@@ -19,26 +19,31 @@
         const button = doc && doc.getElementById('toolsMenuBtn');
         const menu = doc && doc.getElementById('toolsMenu');
         const board = doc && doc.getElementById('board');
-        if (!button || !menu || !board) throw new Error('board tools menu not ready');
+        const sourceCard = doc && doc.querySelector('.card');
+        if (!button || !menu || !board || !sourceCard) throw new Error('board tools menu not ready');
 
         button.click();
         if (!menu.classList.contains('show')) throw new Error('tools menu did not open');
 
         const menuRect = menu.getBoundingClientRect();
-        const overlapCard = doc.querySelector('.card');
-        if (!overlapCard) throw new Error('no customer card for layering probe');
 
-        // Five-column desktop fit changes natural card positions. Move one real card
-        // underneath the open menu using transform, which preserves the production
-        // card stacking-context behavior we actually want to test.
-        const originalRect = overlapCard.getBoundingClientRect();
-        const targetLeft = menuRect.left + Math.min(18, Math.max(4, menuRect.width / 4));
-        const targetTop = menuRect.top + Math.min(18, Math.max(4, menuRect.height / 4));
-        const dx = targetLeft - originalRect.left;
-        const dy = targetTop - originalRect.top;
-        overlapCard.style.transform = `translate(${dx}px, ${dy}px)`;
+        // The five-column layout changes natural card geometry. Use a cloned real
+        // customer card as a controlled stacking-context competitor directly under
+        // the open menu. Fixed positioning avoids column/grid/overflow rules, while
+        // transform reproduces the production stacking context created on card hover.
+        const probeCard = sourceCard.cloneNode(true);
+        probeCard.id = 'menuLayerProbeCard';
+        probeCard.style.setProperty('position', 'fixed', 'important');
+        probeCard.style.setProperty('left', `${menuRect.left + 16}px`, 'important');
+        probeCard.style.setProperty('top', `${menuRect.top + 16}px`, 'important');
+        probeCard.style.setProperty('width', '112px', 'important');
+        probeCard.style.setProperty('height', '80px', 'important');
+        probeCard.style.setProperty('margin', '0', 'important');
+        probeCard.style.setProperty('transform', 'translateZ(0)', 'important');
+        probeCard.style.setProperty('z-index', 'auto', 'important');
+        doc.body.appendChild(probeCard);
 
-        const cardRect = overlapCard.getBoundingClientRect();
+        const cardRect = probeCard.getBoundingClientRect();
         const left = Math.max(menuRect.left, cardRect.left);
         const right = Math.min(menuRect.right, cardRect.right);
         const top = Math.max(menuRect.top, cardRect.top);
