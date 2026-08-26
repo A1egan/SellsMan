@@ -50,6 +50,16 @@ grep -q '"lastColumnVisibleAfterDirectScroll":true' /tmp/sellsman-board-probe.ht
 grep -q '"controlsPresent":true' /tmp/sellsman-board-probe.html
 grep -q '"buttonScrollWorks":true' /tmp/sellsman-board-probe.html
 
+# The legacy tools dropdown must remain above cards after the header is moved
+# into the Workspace board view. elementFromPoint checks the real paint order
+# at an overlap point while reproducing the card hover transform context.
+"$CHROME" "${PROBE_COMMON[@]}" --dump-dom 'http://127.0.0.1:8765/tests/tools_menu_layer_probe.html' >/tmp/sellsman-menu-probe.html 2>/tmp/sellsman-menu-probe.err
+printf 'Tools menu layering probe: '
+grep -o '{"[^<]*}' /tmp/sellsman-menu-probe.html | head -1 || { echo 'no JSON result'; tail -80 /tmp/sellsman-menu-probe.html; }
+grep -q 'id="result-done"' /tmp/sellsman-menu-probe.html
+grep -q '"overlapFound":true' /tmp/sellsman-menu-probe.html
+grep -q '"topmostInMenu":true' /tmp/sellsman-menu-probe.html
+
 mkdir -p /tmp/workspace-v2-shots
 "$CHROME" "${COMMON[@]}" --window-size=1440,900 --screenshot=/tmp/workspace-v2-shots/home-1440.png 'http://127.0.0.1:8765/#home' >/dev/null 2>/tmp/sellsman-shot-home.err
 "$CHROME" "${COMMON[@]}" --window-size=1920,1080 --screenshot=/tmp/workspace-v2-shots/home-1920.png 'http://127.0.0.1:8765/#home' >/dev/null 2>/tmp/sellsman-shot-home-wide.err
