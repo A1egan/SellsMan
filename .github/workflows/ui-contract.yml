@@ -21,6 +21,7 @@ jobs:
       - run: python tests/test_workspace_v2_contract.py
       - run: python tests/test_workspace_v2_readability.py
       - run: node tests/test_workspace_v2_core.js
+      - run: bash tests/test_tools_menu_layering.sh
       - run: bash tests/test_workspace_v2_browser.sh
       - uses: actions/upload-artifact@v4
         if: always()

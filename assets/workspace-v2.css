@@ -657,6 +657,7 @@ body.workspace-v2-ready::before {
   min-height: 48px;
   padding: 6px 12px;
   background: #fffdf7;
+  backdrop-filter: none;
   border-bottom: 1px solid var(--ws-soft-line);
   box-shadow: none;
 }

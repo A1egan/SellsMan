@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>Tools menu layering probe</title></head>
+<body>
+  <pre id="result">pending</pre>
+  <iframe id="app" src="../index.html#board" style="width:1440px;height:900px;border:0"></iframe>
+  <script>
+    const frame = document.getElementById('app');
+    const result = document.getElementById('result');
+
+    function finish(data, ok) {
+      result.textContent = JSON.stringify(data);
+      result.id = ok ? 'result-done' : 'result-error';
+    }
+
+    setTimeout(() => {
+      try {
+        const doc = frame.contentDocument;
+        const button = doc && doc.getElementById('toolsMenuBtn');
+        const menu = doc && doc.getElementById('toolsMenu');
+        const board = doc && doc.getElementById('board');
+        if (!button || !menu || !board) throw new Error('board tools menu not ready');
+
+        button.click();
+        if (!menu.classList.contains('show')) throw new Error('tools menu did not open');
+
+        const menuRect = menu.getBoundingClientRect();
+        const cards = Array.from(doc.querySelectorAll('.card'));
+        let overlapCard = null;
+        let overlap = null;
+
+        for (const card of cards) {
+          const rect = card.getBoundingClientRect();
+          const left = Math.max(menuRect.left, rect.left);
+          const right = Math.min(menuRect.right, rect.right);
+          const top = Math.max(menuRect.top, rect.top);
+          const bottom = Math.min(menuRect.bottom, rect.bottom);
+          if (right - left > 8 && bottom - top > 8) {
+            overlapCard = card;
+            overlap = { left, right, top, bottom };
+            break;
+          }
+        }
+
+        if (!overlapCard || !overlap) {
+          finish({ menuOpen: true, overlapFound: false }, false);
+          return;
+        }
+
+        // Reproduce the same stacking context created by the production .card:hover transform.
+        overlapCard.style.transform = 'translateY(-2px)';
+
+        const x = (overlap.left + overlap.right) / 2;
+        const y = (overlap.top + overlap.bottom) / 2;
+        const topmost = doc.elementFromPoint(x, y);
+        const topmostInMenu = !!(topmost && menu.contains(topmost));
+
+        finish({
+          menuOpen: true,
+          overlapFound: true,
+          topmostInMenu,
+          topmostTag: topmost ? topmost.tagName : null,
+          topmostClass: topmost ? topmost.className : null,
+          headerPosition: getComputedStyle(menu.closest('.header')).position,
+          headerBackdropFilter: getComputedStyle(menu.closest('.header')).backdropFilter,
+          menuZIndex: getComputedStyle(menu).zIndex,
+          probeX: Math.round(x),
+          probeY: Math.round(y)
+        }, true);
+      } catch (err) {
+        finish({ error: String(err) }, false);
+      }
+    }, 3600);
+  </script>
+</body>
+</html>
