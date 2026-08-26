@@ -35,14 +35,14 @@ grep -q 'workspace-view active" data-view="board"' /tmp/sellsman-board.html
 grep -q '客户看板' /tmp/sellsman-board.html
 grep -q '沉默用户' /tmp/sellsman-board.html
 
-# Runtime geometry probe. Native horizontal overflow must work structurally,
-# and the workspace must provide explicit mouse-click controls that move the
-# board without relying on a trackpad gesture or OS scrollbar visibility.
+# Below the five-column desktop breakpoint, native horizontal overflow and
+# explicit mouse controls remain the fallback for narrow windows.
 PROBE_COMMON=(--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --virtual-time-budget=7500 --window-size=1500,1000)
 "$CHROME" "${PROBE_COMMON[@]}" --dump-dom 'http://127.0.0.1:8765/tests/board_scroll_probe.html' >/tmp/sellsman-board-probe.html 2>/tmp/sellsman-board-probe.err
 printf 'Board scroll probe: '
 grep -o '{"[^<]*}' /tmp/sellsman-board-probe.html | head -1 || { echo 'no JSON result'; tail -80 /tmp/sellsman-board-probe.html; }
 grep -q 'id="result-done"' /tmp/sellsman-board-probe.html
+grep -q '"viewportWidth":1200' /tmp/sellsman-board-probe.html
 grep -q '"canOverflow":true' /tmp/sellsman-board-probe.html
 grep -q '"directScrollWorks":true' /tmp/sellsman-board-probe.html
 grep -q '"bottomVisible":true' /tmp/sellsman-board-probe.html
@@ -54,6 +54,7 @@ mkdir -p /tmp/workspace-v2-shots
 "$CHROME" "${COMMON[@]}" --window-size=1440,900 --screenshot=/tmp/workspace-v2-shots/home-1440.png 'http://127.0.0.1:8765/#home' >/dev/null 2>/tmp/sellsman-shot-home.err
 "$CHROME" "${COMMON[@]}" --window-size=1920,1080 --screenshot=/tmp/workspace-v2-shots/home-1920.png 'http://127.0.0.1:8765/#home' >/dev/null 2>/tmp/sellsman-shot-home-wide.err
 "$CHROME" "${COMMON[@]}" --window-size=1440,900 --screenshot=/tmp/workspace-v2-shots/board-1440.png 'http://127.0.0.1:8765/#board' >/dev/null 2>/tmp/sellsman-shot-board.err
+"$CHROME" "${COMMON[@]}" --window-size=1920,1080 --screenshot=/tmp/workspace-v2-shots/board-1920.png 'http://127.0.0.1:8765/#board' >/dev/null 2>/tmp/sellsman-shot-board-wide.err
 
 # A runtime crash normally prevents the shell/home content from appearing;
 # screenshots are uploaded by CI for visual inspection.
