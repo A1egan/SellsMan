@@ -19,6 +19,20 @@
       let proto = null;
       let originalAdd = null;
       try {
+        const deps = win.eval(`({
+          renderCard: typeof renderCard,
+          followupRank: typeof followupRank,
+          matchesTaskFilter: typeof matchesTaskFilter,
+          getTag: typeof getTag,
+          COLUMN_LIMIT: typeof COLUMN_LIMIT,
+          expandedCols: typeof expandedCols,
+          colFilters: typeof colFilters,
+          taskFilter: typeof taskFilter,
+          activeTagFilter: typeof activeTagFilter,
+          renderStats: typeof renderStats,
+          saveData: typeof saveData
+        })`);
+
         const sourceCard = doc && doc.querySelector('.column-body .card[draggable="true"]');
         if (!sourceCard) throw new Error('no draggable customer card');
         const sourceId = sourceCard.dataset.id;
@@ -48,6 +62,7 @@
           target,
           currentTarget,
           dataTransfer,
+          relatedTarget: null,
           preventDefault() {}
         });
 
@@ -71,6 +86,11 @@
         } catch (_) {}
 
         const dragActiveAfter = doc.body.classList.contains('board-drag-active');
+        const perfApiPresent = !!win.__boardDragPerformance;
+        let directPartialResult = null;
+        if (win.__boardDragPerformance && typeof win.__boardDragPerformance.partialRefresh === 'function') {
+          directPartialResult = win.__boardDragPerformance.partialRefresh(sourceCol, targetCol);
+        }
         const optimized = dragActiveDuring && transitionDuring === '0s' && dragOverAdds <= 2 && moved && persisted && renderCount === 0 && !dragActiveAfter;
 
         if (proto && originalAdd) proto.add = originalAdd;
@@ -80,6 +100,9 @@
           sourceId,
           sourceCol,
           targetCol,
+          deps,
+          perfApiPresent,
+          directPartialResult,
           dragActiveDuring,
           transitionDuring,
           dragOverAdds,
