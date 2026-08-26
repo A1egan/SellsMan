@@ -5,6 +5,7 @@ on:
     branches: [feat/board-five-column-performance]
     paths:
       - scripts/apply_board_header_layer_fix.py
+      - tests/tools_menu_layer_probe.html
       - .github/workflows/apply-board-header-layer-fix.yml
 
 permissions:
