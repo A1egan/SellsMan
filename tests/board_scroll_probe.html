@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>Board scroll probe</title></head>
+<body>
+  <pre id="result">pending</pre>
+  <iframe id="app" src="../index.html#board" style="width:1440px;height:900px;border:0"></iframe>
+  <script>
+    const frame = document.getElementById('app');
+    const result = document.getElementById('result');
+
+    function finish(data, ok) {
+      result.textContent = JSON.stringify(data);
+      result.id = ok ? 'result-done' : 'result-error';
+    }
+
+    setTimeout(() => {
+      try {
+        const doc = frame.contentDocument;
+        const board = doc && doc.getElementById('board');
+        const view = doc && doc.querySelector('.workspace-view[data-view="board"]');
+        if (!board || !view) throw new Error('board workspace not ready');
+        const columns = Array.from(board.querySelectorAll('.column'));
+        if (!columns.length) throw new Error('board columns not rendered');
+
+        const maxScroll = Math.max(0, board.scrollWidth - board.clientWidth);
+        board.scrollLeft = maxScroll;
+
+        setTimeout(() => {
+          try {
+            const boardRect = board.getBoundingClientRect();
+            const viewRect = view.getBoundingClientRect();
+            const lastRect = columns[columns.length - 1].getBoundingClientRect();
+            const structuralMoved = board.scrollLeft > 100;
+
+            board.scrollLeft = 0;
+            setTimeout(() => {
+              const leftButton = doc.getElementById('workspaceBoardScrollLeft');
+              const rightButton = doc.getElementById('workspaceBoardScrollRight');
+              const controlsPresent = !!(leftButton && rightButton);
+              const rightEnabledBeforeClick = !!(rightButton && !rightButton.disabled);
+
+              const originalScrollTo = board.scrollTo.bind(board);
+              let scrollToCalled = false;
+              let requestedLeft = null;
+              let requestedBehavior = null;
+              board.scrollTo = function(arg1, arg2) {
+                scrollToCalled = true;
+                if (typeof arg1 === 'object' && arg1) {
+                  requestedLeft = Number(arg1.left);
+                  requestedBehavior = arg1.behavior || null;
+                } else {
+                  requestedLeft = Number(arg1);
+                }
+                return originalScrollTo(arg1, arg2);
+              };
+
+              if (rightButton) rightButton.click();
+
+              setTimeout(() => {
+                finish({
+                  clientWidth: board.clientWidth,
+                  scrollWidth: board.scrollWidth,
+                  maxScroll,
+                  directAfter: structuralMoved ? maxScroll : board.scrollLeft,
+                  canOverflow: maxScroll > 100,
+                  directScrollWorks: structuralMoved,
+                  bottomVisible: boardRect.bottom <= viewRect.bottom + 1,
+                  lastColumnVisibleAfterDirectScroll: lastRect.left < boardRect.right && lastRect.right > boardRect.left,
+                  controlsPresent,
+                  rightEnabledBeforeClick,
+                  scrollToCalled,
+                  requestedLeft,
+                  requestedBehavior,
+                  buttonScrollWorks: board.scrollLeft > 100,
+                  buttonAfter: board.scrollLeft,
+                  columnCount: columns.length,
+                  boardBottom: Math.round(boardRect.bottom),
+                  viewBottom: Math.round(viewRect.bottom)
+                }, true);
+              }, 700);
+            }, 180);
+          } catch (err) {
+            finish({error: String(err)}, false);
+          }
+        }, 150);
+      } catch (err) {
+        finish({error: String(err)}, false);
+      }
+    }, 3600);
+  </script>
+</body>
+</html>

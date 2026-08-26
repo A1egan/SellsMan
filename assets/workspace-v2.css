@@ -915,3 +915,44 @@ body.workspace-v2-ready::before {
 .ws-history-item { min-height: 40px; font-size: 12px; }
 .ws-history-status { font-size: 10.5px; }
 
+
+
+/* explicit board scroll controls */
+.workspace-board-scroll-controls {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.workspace-board-scroll-btn {
+  min-width: 74px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1.5px solid var(--ws-line);
+  border-radius: 6px;
+  background: #fffdf7;
+  color: var(--ws-ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 rgba(21,21,21,.12);
+}
+.workspace-board-scroll-btn:hover:not(:disabled) {
+  transform: translate(-1px,-1px);
+  box-shadow: 3px 3px 0 rgba(21,21,21,.16);
+  background: #fff7d6;
+}
+.workspace-board-scroll-btn:disabled {
+  cursor: default;
+  opacity: .34;
+  box-shadow: none;
+}
+.workspace-view[data-view="board"] .task-bar::after {
+  content: "不用触控板，点左右按钮切换栏目";
+  margin-left: 6px;
+  padding-left: 0;
+  font-size: 11px;
+  white-space: nowrap;
+}
