@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>Board drag performance probe</title></head>
+<body>
+  <pre id="result">pending</pre>
+  <iframe id="app" src="../index.html#board" style="width:1440px;height:900px;border:0"></iframe>
+  <script>
+    const frame = document.getElementById('app');
+    const result = document.getElementById('result');
+    const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+    function finish(data, ok) {
+      result.textContent = JSON.stringify(data);
+      result.id = ok ? 'result-done' : 'result-error';
+    }
+
+    setTimeout(async () => {
+      try {
+        const win = frame.contentWindow;
+        const doc = frame.contentDocument;
+        const sourceBody = doc && doc.querySelector('.column-body[data-col="pending"]');
+        const targetBody = doc && doc.querySelector('.column-body[data-col="contacting"]');
+        const card = sourceBody && sourceBody.querySelector('.card');
+        if (!win || !doc || !sourceBody || !targetBody || !card) throw new Error('drag fixture not ready');
+        if (!win.WorkspaceV2Board || typeof win.onDragStart !== 'function' || typeof win.onDrop !== 'function') {
+          throw new Error('optimized board drag layer not loaded');
+        }
+
+        const id = card.dataset.id;
+        if (!id) throw new Error('source card missing data-id');
+
+        const sourceCountBefore = Number(doc.getElementById('count-pending').textContent || 0);
+        const targetCountBefore = Number(doc.getElementById('count-contacting').textContent || 0);
+        const originalRender = win.render;
+        let renderCalls = 0;
+        win.render = function() {
+          renderCalls += 1;
+          return originalRender.apply(this, arguments);
+        };
+
+        const dataTransfer = {
+          effectAllowed: '',
+          dropEffect: '',
+          setData() {},
+        };
+        const startEvent = { currentTarget: card, target: card, dataTransfer };
+        const overEvent = { preventDefault() {}, currentTarget: targetBody, dataTransfer };
+        const dropEvent = { preventDefault() {}, currentTarget: targetBody };
+
+        win.onDragStart(startEvent, id);
+        const dragClassDuring = doc.body.classList.contains('board-drag-active');
+        const draggingClassDuring = card.classList.contains('dragging');
+        const pointerEventsDuring = getComputedStyle(card).pointerEvents;
+
+        win.onDragOver(overEvent);
+        win.onDragOver(overEvent);
+        const activeHighlightsDuring = doc.querySelectorAll('.column-body.drag-over').length;
+
+        win.onDrop(dropEvent);
+        const renderCallsImmediate = renderCalls;
+        const movedImmediately = card.parentElement === targetBody;
+        const dragClassAfterDrop = doc.body.classList.contains('board-drag-active');
+        const highlightCountAfterDrop = doc.querySelectorAll('.column-body.drag-over').length;
+        const sourceCountImmediate = Number(doc.getElementById('count-pending').textContent || 0);
+        const targetCountImmediate = Number(doc.getElementById('count-contacting').textContent || 0);
+        const stored = JSON.parse(win.localStorage.getItem('sales_followup_data_v3') || '[]');
+        const storedUser = Array.isArray(stored) ? stored.find(user => user.id === id) : null;
+        const persistedImmediately = !!(storedUser && storedUser.column === 'contacting');
+
+        await sleep(1200);
+        const renderCallsAfterIdle = renderCalls;
+        const reconciledCard = doc.querySelector('.column-body[data-col="contacting"] .card[data-id="' + id + '"]');
+        const persistedAfterIdle = !!reconciledCard;
+
+        const ok = dragClassDuring && draggingClassDuring && pointerEventsDuring === 'none' &&
+          activeHighlightsDuring === 1 && movedImmediately && renderCallsImmediate === 0 &&
+          !dragClassAfterDrop && highlightCountAfterDrop === 0 && persistedImmediately && persistedAfterIdle &&
+          sourceCountImmediate === sourceCountBefore - 1 && targetCountImmediate === targetCountBefore + 1 &&
+          renderCallsAfterIdle <= 1;
+
+        finish({
+          optimizedLayerLoaded: true,
+          dragClassDuring,
+          draggingClassDuring,
+          pointerEventsDuring,
+          activeHighlightsDuring,
+          movedImmediately,
+          renderCallsImmediate,
+          renderCallsAfterIdle,
+          dragClassAfterDrop,
+          highlightCountAfterDrop,
+          sourceCountBefore,
+          sourceCountImmediate,
+          targetCountBefore,
+          targetCountImmediate,
+          persistedImmediately,
+          persistedAfterIdle
+        }, ok);
+      } catch (err) {
+        finish({ error: String(err) }, false);
+      }
+    }, 4200);
+  </script>
+</body>
+</html>
