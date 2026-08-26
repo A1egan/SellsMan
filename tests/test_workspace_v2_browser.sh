@@ -38,10 +38,11 @@ grep -q '沉默用户' /tmp/sellsman-board.html
 # Runtime geometry probe: the real board must overflow horizontally, accept
 # scrollLeft changes, reveal the final stage, and keep its bottom edge inside
 # the board viewport rather than clipping the scrollbar.
-PROBE_COMMON=(--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --virtual-time-budget=6500 --window-size=1500,1000)
+PROBE_COMMON=(--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --virtual-time-budget=7500 --window-size=1500,1000)
 "$CHROME" "${PROBE_COMMON[@]}" --dump-dom 'http://127.0.0.1:8765/tests/board_scroll_probe.html' >/tmp/sellsman-board-probe.html 2>/tmp/sellsman-board-probe.err
+printf 'Board scroll probe: '
+grep -o '{&quot;[^<]*}' /tmp/sellsman-board-probe.html | head -1 || { echo 'no JSON result'; tail -80 /tmp/sellsman-board-probe.html; }
 grep -q 'id="result-done"' /tmp/sellsman-board-probe.html
-grep -o '{&quot;clientWidth&quot;[^<]*}' /tmp/sellsman-board-probe.html | head -1 || true
 grep -q '&quot;canOverflow&quot;:true' /tmp/sellsman-board-probe.html
 grep -q '&quot;moved&quot;:true' /tmp/sellsman-board-probe.html
 grep -q '&quot;bottomVisible&quot;:true' /tmp/sellsman-board-probe.html
