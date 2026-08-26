@@ -13,6 +13,25 @@
       result.id = ok ? 'result-done' : 'result-error';
     }
 
+    function styleInfo(el) {
+      if (!el) return null;
+      const s = getComputedStyle(el);
+      return {
+        tag: el.tagName,
+        id: el.id || '',
+        cls: el.className || '',
+        position: s.position,
+        z: s.zIndex,
+        transform: s.transform,
+        opacity: s.opacity,
+        filter: s.filter,
+        backdrop: s.backdropFilter,
+        isolation: s.isolation,
+        contain: s.contain,
+        willChange: s.willChange
+      };
+    }
+
     setTimeout(() => {
       try {
         const doc = frame.contentDocument;
@@ -26,11 +45,6 @@
         if (!menu.classList.contains('show')) throw new Error('tools menu did not open');
 
         const menuRect = menu.getBoundingClientRect();
-
-        // The five-column layout changes natural card geometry. Use a cloned real
-        // customer card as a controlled stacking-context competitor directly under
-        // the open menu. Fixed positioning avoids column/grid/overflow rules, while
-        // transform reproduces the production stacking context created on card hover.
         const probeCard = sourceCard.cloneNode(true);
         probeCard.id = 'menuLayerProbeCard';
         probeCard.style.setProperty('position', 'fixed', 'important');
@@ -58,16 +72,18 @@
         const y = (top + bottom) / 2;
         const topmost = doc.elementFromPoint(x, y);
         const topmostInMenu = !!(topmost && menu.contains(topmost));
+        const menuChain = [];
+        for (let el = menu; el && el !== doc.documentElement; el = el.parentElement) menuChain.push(styleInfo(el));
 
         finish({
           menuOpen: true,
           overlapFound,
           topmostInMenu,
-          topmostTag: topmost ? topmost.tagName : null,
-          topmostClass: topmost ? topmost.className : null,
-          headerPosition: getComputedStyle(menu.closest('.header')).position,
-          headerBackdropFilter: getComputedStyle(menu.closest('.header')).backdropFilter,
-          menuZIndex: getComputedStyle(menu).zIndex,
+          topmost: styleInfo(topmost),
+          menu: styleInfo(menu),
+          menuChain,
+          probeCard: styleInfo(probeCard),
+          probeChild: styleInfo(probeCard.firstElementChild),
           probeX: Math.round(x),
           probeY: Math.round(y)
         }, true);
