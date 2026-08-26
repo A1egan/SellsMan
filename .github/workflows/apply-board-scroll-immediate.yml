@@ -1,0 +1,34 @@
+name: Apply deterministic board scrolling
+
+on:
+  push:
+    branches: [fix/board-scroll-runtime]
+    paths:
+      - scripts/apply_board_scroll_immediate.py
+      - .github/workflows/apply-board-scroll-immediate.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/board-scroll-runtime
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/apply_board_scroll_immediate.py
+      - name: Commit deterministic scroll change
+        run: |
+          if git diff --quiet -- assets/workspace-v2.js; then
+            echo "No patch needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/workspace-v2.js
+          git commit -m "fix: make customer board button scrolling deterministic"
+          git push origin HEAD:fix/board-scroll-runtime
