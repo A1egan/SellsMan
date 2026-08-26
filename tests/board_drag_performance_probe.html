@@ -88,8 +88,26 @@
         const dragActiveAfter = doc.body.classList.contains('board-drag-active');
         const perfApiPresent = !!win.__boardDragPerformance;
         let directPartialResult = null;
-        if (win.__boardDragPerformance && typeof win.__boardDragPerformance.partialRefresh === 'function') {
-          directPartialResult = win.__boardDragPerformance.partialRefresh(sourceCol, targetCol);
+        let sourceRenderResult = null;
+        let targetRenderResult = null;
+        let sourceRenderError = '';
+        let targetRenderError = '';
+        if (win.__boardDragPerformance) {
+          try {
+            sourceRenderResult = win.__boardDragPerformance.renderBoardColumn(sourceCol);
+          } catch (err) {
+            sourceRenderError = String(err && err.stack ? err.stack : err);
+          }
+          try {
+            targetRenderResult = win.__boardDragPerformance.renderBoardColumn(targetCol);
+          } catch (err) {
+            targetRenderError = String(err && err.stack ? err.stack : err);
+          }
+          try {
+            directPartialResult = win.__boardDragPerformance.partialRefresh(sourceCol, targetCol);
+          } catch (err) {
+            directPartialResult = 'throw:' + String(err);
+          }
         }
         const optimized = dragActiveDuring && transitionDuring === '0s' && dragOverAdds <= 2 && moved && persisted && renderCount === 0 && !dragActiveAfter;
 
@@ -102,6 +120,10 @@
           targetCol,
           deps,
           perfApiPresent,
+          sourceRenderResult,
+          targetRenderResult,
+          sourceRenderError,
+          targetRenderError,
           directPartialResult,
           dragActiveDuring,
           transitionDuring,
