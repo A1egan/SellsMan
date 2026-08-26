@@ -13,38 +13,24 @@
       result.id = ok ? 'result-done' : 'result-error';
     }
 
-    function styleInfo(el) {
-      if (!el) return null;
-      const s = getComputedStyle(el);
-      return {
-        tag: el.tagName,
-        id: el.id || '',
-        cls: el.className || '',
-        position: s.position,
-        z: s.zIndex,
-        transform: s.transform,
-        opacity: s.opacity,
-        filter: s.filter,
-        backdrop: s.backdropFilter,
-        isolation: s.isolation,
-        contain: s.contain,
-        willChange: s.willChange
-      };
-    }
-
     setTimeout(() => {
       try {
         const doc = frame.contentDocument;
         const button = doc && doc.getElementById('toolsMenuBtn');
         const menu = doc && doc.getElementById('toolsMenu');
         const board = doc && doc.getElementById('board');
+        const view = doc && doc.querySelector('.workspace-view[data-view="board"]');
         const sourceCard = doc && doc.querySelector('.card');
-        if (!button || !menu || !board || !sourceCard) throw new Error('board tools menu not ready');
+        if (!button || !menu || !board || !view || !sourceCard) throw new Error('board tools menu not ready');
 
         button.click();
         if (!menu.classList.contains('show')) throw new Error('tools menu did not open');
 
         const menuRect = menu.getBoundingClientRect();
+
+        // Keep the competitor inside the same production board view. This reproduces
+        // a transformed customer card without inventing a new root-level stacking
+        // context that cannot exist for real board cards.
         const probeCard = sourceCard.cloneNode(true);
         probeCard.id = 'menuLayerProbeCard';
         probeCard.style.setProperty('position', 'fixed', 'important');
@@ -53,9 +39,10 @@
         probeCard.style.setProperty('width', '112px', 'important');
         probeCard.style.setProperty('height', '80px', 'important');
         probeCard.style.setProperty('margin', '0', 'important');
+        probeCard.style.setProperty('transition', 'none', 'important');
         probeCard.style.setProperty('transform', 'translateZ(0)', 'important');
         probeCard.style.setProperty('z-index', 'auto', 'important');
-        doc.body.appendChild(probeCard);
+        view.appendChild(probeCard);
 
         const cardRect = probeCard.getBoundingClientRect();
         const left = Math.max(menuRect.left, cardRect.left);
@@ -72,18 +59,16 @@
         const y = (top + bottom) / 2;
         const topmost = doc.elementFromPoint(x, y);
         const topmostInMenu = !!(topmost && menu.contains(topmost));
-        const menuChain = [];
-        for (let el = menu; el && el !== doc.documentElement; el = el.parentElement) menuChain.push(styleInfo(el));
 
         finish({
           menuOpen: true,
           overlapFound,
           topmostInMenu,
-          topmost: styleInfo(topmost),
-          menu: styleInfo(menu),
-          menuChain,
-          probeCard: styleInfo(probeCard),
-          probeChild: styleInfo(probeCard.firstElementChild),
+          topmostTag: topmost ? topmost.tagName : null,
+          topmostClass: topmost ? topmost.className : null,
+          headerPosition: getComputedStyle(menu.closest('.header')).position,
+          headerBackdropFilter: getComputedStyle(menu.closest('.header')).backdropFilter,
+          menuZIndex: getComputedStyle(menu).zIndex,
           probeX: Math.round(x),
           probeY: Math.round(y)
         }, true);
