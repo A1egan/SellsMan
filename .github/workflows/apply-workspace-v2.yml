@@ -1,0 +1,34 @@
+name: Apply workspace v2
+
+on:
+  push:
+    branches: [design/crm-workspace-v2]
+    paths:
+      - scripts/apply_workspace_v2.py
+      - .github/workflows/apply-workspace-v2.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: design/crm-workspace-v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/apply_workspace_v2.py
+      - name: Commit patched index
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "No patch needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "feat: link workspace v2 assets"
+          git push origin HEAD:design/crm-workspace-v2
