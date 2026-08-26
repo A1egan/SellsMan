@@ -3,25 +3,35 @@
 <head><meta charset="utf-8"><title>Board scroll probe</title></head>
 <body>
   <pre id="result">pending</pre>
-  <iframe id="app" src="../#board" style="width:1440px;height:900px;border:0"></iframe>
+  <iframe id="app" src="../index.html#board" style="width:1440px;height:900px;border:0"></iframe>
   <script>
     const frame = document.getElementById('app');
     const result = document.getElementById('result');
-    frame.addEventListener('load', () => {
-      setTimeout(() => {
-        try {
-          const doc = frame.contentDocument;
-          const board = doc.getElementById('board');
-          const view = doc.querySelector('.workspace-view[data-view="board"]');
-          const columns = Array.from(board.querySelectorAll('.column'));
-          const before = board.scrollLeft;
-          const maxScroll = Math.max(0, board.scrollWidth - board.clientWidth);
-          board.scrollLeft = maxScroll;
-          requestAnimationFrame(() => requestAnimationFrame(() => {
+
+    function finish(data, ok) {
+      result.textContent = JSON.stringify(data);
+      result.id = ok ? 'result-done' : 'result-error';
+    }
+
+    setTimeout(() => {
+      try {
+        const doc = frame.contentDocument;
+        const board = doc && doc.getElementById('board');
+        const view = doc && doc.querySelector('.workspace-view[data-view="board"]');
+        if (!board || !view) throw new Error('board workspace not ready');
+        const columns = Array.from(board.querySelectorAll('.column'));
+        if (!columns.length) throw new Error('board columns not rendered');
+
+        const before = board.scrollLeft;
+        const maxScroll = Math.max(0, board.scrollWidth - board.clientWidth);
+        board.scrollLeft = maxScroll;
+
+        setTimeout(() => {
+          try {
             const boardRect = board.getBoundingClientRect();
             const viewRect = view.getBoundingClientRect();
             const lastRect = columns[columns.length - 1].getBoundingClientRect();
-            const data = {
+            finish({
               clientWidth: board.clientWidth,
               scrollWidth: board.scrollWidth,
               maxScroll,
@@ -34,16 +44,15 @@
               columnCount: columns.length,
               boardBottom: Math.round(boardRect.bottom),
               viewBottom: Math.round(viewRect.bottom)
-            };
-            result.textContent = JSON.stringify(data);
-            result.id = 'result-done';
-          }));
-        } catch (err) {
-          result.textContent = JSON.stringify({error: String(err)});
-          result.id = 'result-error';
-        }
-      }, 2200);
-    });
+            }, true);
+          } catch (err) {
+            finish({error: String(err)}, false);
+          }
+        }, 150);
+      } catch (err) {
+        finish({error: String(err)}, false);
+      }
+    }, 3600);
   </script>
 </body>
 </html>
