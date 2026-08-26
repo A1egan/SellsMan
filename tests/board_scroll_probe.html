@@ -3,7 +3,7 @@
 <head><meta charset="utf-8"><title>Board scroll probe</title></head>
 <body>
   <pre id="result">pending</pre>
-  <iframe id="app" src="../index.html#board" style="width:1440px;height:900px;border:0"></iframe>
+  <iframe id="app" src="../index.html#board" style="width:1200px;height:900px;border:0"></iframe>
   <script>
     const frame = document.getElementById('app');
     const result = document.getElementById('result');
@@ -58,6 +58,7 @@
 
               setTimeout(() => {
                 finish({
+                  viewportWidth: 1200,
                   clientWidth: board.clientWidth,
                   scrollWidth: board.scrollWidth,
                   maxScroll,
