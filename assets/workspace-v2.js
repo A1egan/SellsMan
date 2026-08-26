@@ -151,7 +151,7 @@
           </div>
           <div class="workspace-topbar-actions">
             <input class="workspace-quick-search" id="workspaceQuickSearch" placeholder="输入学员编号 / 备注 / 标签，Enter 搜索">
-            <button class="ws-btn primary" id="workspaceAddTaskBtn" type="button">+ 今日任务</button>
+            <button class="ws-btn primary" id="workspaceAddTaskBtn" type="button">+ 工作计划</button>
           </div>
         </header>
         <div class="workspace-view-stack" id="workspaceViewStack">
@@ -207,8 +207,50 @@
           <div class="rollover-select-list" id="wsRolloverList"></div>
           <div class="ws-modal-actions"><button class="ws-btn ghost" type="button" onclick="WorkspaceV2.closeRolloverSelector()">取消</button><button class="ws-btn primary" type="button" onclick="WorkspaceV2.confirmSelectedRollover()">转入选中</button></div>
         </div>
+      </div>
+      <div class="ws-modal-overlay" id="wsTaskHistoryModal" onclick="if(event.target===this) WorkspaceV2.closeTaskHistory()">
+        <div class="ws-modal ws-history-modal">
+          <div class="comic-label">WORK LOG</div>
+          <h2>任务历史</h2>
+          <div class="ws-history-note">按计划日期保留今日/明日工作记录，已完成和暂缓内容都不会消失。</div>
+          <div class="ws-task-history-list" id="wsTaskHistoryList"></div>
+          <div class="ws-modal-actions"><button class="ws-btn primary" type="button" onclick="WorkspaceV2.closeTaskHistory()">关闭</button></div>
+        </div>
       </div>`;
     while (wrapper.firstElementChild) document.body.appendChild(wrapper.firstElementChild);
+  }
+
+  function openTaskHistory() {
+    const modal = document.getElementById('wsTaskHistoryModal');
+    const box = document.getElementById('wsTaskHistoryList');
+    const list = state.workTasks.slice().map(core.normalizeTask).sort((a, b) => {
+      const dateOrder = String(b.plannedDate || '').localeCompare(String(a.plannedDate || ''));
+      return dateOrder || Number(b.createdAt || 0) - Number(a.createdAt || 0);
+    }).slice(0, 160);
+    if (!list.length) {
+      box.innerHTML = '<div class="ws-empty">还没有任务历史</div>';
+    } else {
+      const groups = new Map();
+      list.forEach(task => {
+        const key = task.plannedDate || '未标日期';
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(task);
+      });
+      box.innerHTML = Array.from(groups.entries()).map(([date, tasks]) => `
+        <section class="ws-history-day">
+          <div class="ws-history-date"><strong>${safe(date)}</strong><span>${tasks.length} 项</span></div>
+          <div class="ws-history-items">${tasks.map(task => {
+            const user = task.linkedCustomerId ? getUser(task.linkedCustomerId) : null;
+            const labels = { active: '进行中', planned: '计划中', deferred: '已暂缓', completed: '已完成' };
+            return `<div class="ws-history-item" data-status="${safe(task.status)}"><span class="ws-history-status">${labels[task.status] || safe(task.status)}</span><span class="ws-history-title">${safe(task.title || '未命名任务')}</span>${user ? `<button class="customer-chip" type="button" onclick="WorkspaceV2.openCustomer('${safe(user.id)}')">#${safe(user.number)}</button>` : ''}</div>`;
+          }).join('')}</div>
+        </section>`).join('');
+    }
+    modal.classList.add('show');
+  }
+
+  function closeTaskHistory() {
+    document.getElementById('wsTaskHistoryModal').classList.remove('show');
   }
 
   function wireChrome() {
@@ -305,7 +347,7 @@
     const parts = core.partitionTasks(state.workTasks, todayKey());
     const active = parts.active;
     const todayCompleted = parts.completed.filter(t => core.dateKey(t.completedAt) === todayKey());
-    const futurePlanned = parts.planned;
+    const tomorrowPlanned = parts.planned.filter(t => t.plannedDate === tomorrowKey());
     const rollover = parts.rollover;
     const overdue = users.filter(u => getFollowupStatus(u) === 'overdue').length;
     const dueToday = users.filter(u => getFollowupStatus(u) === 'today').length;
@@ -323,12 +365,12 @@
       <div class="home-grid">
         <div class="home-main-column">
           <section class="ws-panel">
-            <div class="ws-panel-head"><div><div class="ws-panel-title">今日计划</div><div class="ws-panel-note">你自己决定今天最重要的工作</div></div><div class="ws-panel-actions"><button class="ws-btn small" type="button" onclick="WorkspaceV2.openTaskEditor('active')">+ 详细任务</button></div></div>
+            <div class="ws-panel-head"><div><div class="ws-panel-title">今日计划</div><div class="ws-panel-note">你自己决定今天最重要的工作</div></div><div class="ws-panel-actions"><button class="ws-btn small ghost" type="button" onclick="WorkspaceV2.openTaskHistory()">任务历史</button><button class="ws-btn small" type="button" onclick="WorkspaceV2.openTaskEditor('active')">+ 详细任务</button></div></div>
             <div class="task-compose"><input id="quickTaskTitle" placeholder="快速记一件今天要做的事"><select id="quickTaskPriority"><option value="normal">普通</option><option value="important">重要</option><option value="urgent">紧急</option></select><button class="ws-btn primary" type="button" onclick="WorkspaceV2.quickAddTask()">加入今日</button></div>
             <div class="ws-panel-body"><div class="work-task-list" data-task-group="active">${renderWorkTaskRows(active, 'active')}</div>${todayCompleted.length ? `<details class="completed-details"><summary>今日已完成 ${todayCompleted.length} 项</summary><div class="work-task-list" style="margin-top:6px">${renderWorkTaskRows(todayCompleted, 'completed')}</div></details>` : ''}</div>
           </section>
           <div class="home-lower-grid">
-            <section class="ws-panel"><div class="ws-panel-head"><div><div class="ws-panel-title">明日计划</div><div class="ws-panel-note">先计划，明天再决定是否接入今日</div></div><div class="ws-panel-actions"><button class="ws-btn small" type="button" onclick="WorkspaceV2.openTaskEditor('planned')">+ 明日任务</button></div></div><div class="ws-panel-body"><div class="work-task-list" data-task-group="planned">${renderWorkTaskRows(futurePlanned.slice(0,8), 'planned')}</div></div></section>
+            <section class="ws-panel"><div class="ws-panel-head"><div><div class="ws-panel-title">明日计划</div><div class="ws-panel-note">先计划，明天再决定是否接入今日</div></div><div class="ws-panel-actions"><button class="ws-btn small" type="button" onclick="WorkspaceV2.openTaskEditor('planned')">+ 明日任务</button></div></div><div class="ws-panel-body"><div class="work-task-list" data-task-group="planned">${renderWorkTaskRows(tomorrowPlanned.slice(0,8), 'planned')}</div></div></section>
             <section class="ws-panel"><div class="ws-panel-head"><div><div class="ws-panel-title">最近处理</div><div class="ws-panel-note">继续刚才的沟通上下文</div></div></div><div class="ws-panel-body"><div class="recent-customers">${renderRecentCustomers()}</div></div></section>
           </div>
         </div>
@@ -670,6 +712,8 @@
     openRolloverSelector,
     closeRolloverSelector,
     confirmSelectedRollover,
+    openTaskHistory,
+    closeTaskHistory,
     openCustomer,
     openCrmQueue,
     openHighIntent,
