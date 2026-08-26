@@ -32,9 +32,9 @@ assert 'data-followup-status=' in html, 'cards must expose follow-up status for 
 assert 'id="detailColumnBadge"' in html, 'detail summary must show current column'
 assert 'id="detailTagSummary"' in html, 'detail summary must show tag summary'
 
-# Keep the desktop board itself as the scroll viewport. Otherwise its
-# horizontal scrollbar falls below long columns and the right-most stage is
-# effectively unreachable during normal laptop use.
+# Keep the legacy desktop board itself as a scroll viewport. Workspace v2
+# may visually override it inside the board child view, but the old engine
+# must retain this compatibility contract.
 workbench = html.split('/* ====== 高密度销售工作台 · 2026-08 ====== */', 1)[1]
 assert re.search(
     r'\.board\s*\{[^}]*height\s*:\s*calc\(100vh\s*-\s*96px\)[^}]*overflow\s*:\s*auto',
@@ -42,8 +42,10 @@ assert re.search(
     re.S,
 ), 'board must be a viewport-height two-axis scroll container'
 
-script_match = re.search(r'<script>(.*)</script>', html, re.S)
-assert script_match, 'script block missing'
+# Check the legacy inline engine only. External workspace scripts are checked
+# independently by tests/test_workspace_v2_contract.py.
+script_match = re.search(r'<script>\s*(.*?)</script>', html, re.S)
+assert script_match, 'legacy inline script block missing'
 with tempfile.NamedTemporaryFile('w', suffix='.js', encoding='utf-8', delete=False) as f:
     f.write(script_match.group(1))
     script_path = f.name
