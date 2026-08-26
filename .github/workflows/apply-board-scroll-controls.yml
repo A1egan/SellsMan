@@ -1,0 +1,34 @@
+name: Apply board scroll controls
+
+on:
+  push:
+    branches: [fix/board-scroll-runtime]
+    paths:
+      - scripts/apply_board_scroll_controls.py
+      - .github/workflows/apply-board-scroll-controls.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/board-scroll-runtime
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/apply_board_scroll_controls.py
+      - name: Commit patched workspace assets
+        run: |
+          if git diff --quiet -- assets/workspace-v2.js assets/workspace-v2.css; then
+            echo "No patch needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/workspace-v2.js assets/workspace-v2.css
+          git commit -m "fix: add explicit customer board scroll controls"
+          git push origin HEAD:fix/board-scroll-runtime
