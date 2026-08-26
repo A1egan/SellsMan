@@ -1030,3 +1030,25 @@ body.workspace-v2-ready::before {
   }
 }
 
+/* board v3 · drag paint suppression */
+body.board-drag-active .workspace-view[data-view="board"] .card,
+body.board-drag-active .workspace-view[data-view="board"] .card-actions,
+body.board-drag-active .workspace-view[data-view="board"] .column-body {
+  transition: none !important;
+}
+
+body.board-drag-active .workspace-view[data-view="board"] .card:not(.dragging),
+body.board-drag-active .workspace-view[data-view="board"] .card:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+body.board-drag-active .workspace-view[data-view="board"] .card .card-actions {
+  opacity: 0 !important;
+}
+
+body.board-drag-active .workspace-view[data-view="board"] .board,
+body.board-drag-active .workspace-view[data-view="board"] .card {
+  cursor: grabbing;
+}
+
