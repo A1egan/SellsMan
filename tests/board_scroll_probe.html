@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>Board scroll probe</title></head>
+<body>
+  <pre id="result">pending</pre>
+  <iframe id="app" src="../#board" style="width:1440px;height:900px;border:0"></iframe>
+  <script>
+    const frame = document.getElementById('app');
+    const result = document.getElementById('result');
+    frame.addEventListener('load', () => {
+      setTimeout(() => {
+        try {
+          const doc = frame.contentDocument;
+          const board = doc.getElementById('board');
+          const view = doc.querySelector('.workspace-view[data-view="board"]');
+          const columns = Array.from(board.querySelectorAll('.column'));
+          const before = board.scrollLeft;
+          const maxScroll = Math.max(0, board.scrollWidth - board.clientWidth);
+          board.scrollLeft = maxScroll;
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            const boardRect = board.getBoundingClientRect();
+            const viewRect = view.getBoundingClientRect();
+            const lastRect = columns[columns.length - 1].getBoundingClientRect();
+            const data = {
+              clientWidth: board.clientWidth,
+              scrollWidth: board.scrollWidth,
+              maxScroll,
+              before,
+              after: board.scrollLeft,
+              canOverflow: maxScroll > 100,
+              moved: board.scrollLeft > before + 100,
+              bottomVisible: boardRect.bottom <= viewRect.bottom + 1,
+              lastColumnVisible: lastRect.left < boardRect.right && lastRect.right > boardRect.left,
+              columnCount: columns.length,
+              boardBottom: Math.round(boardRect.bottom),
+              viewBottom: Math.round(viewRect.bottom)
+            };
+            result.textContent = JSON.stringify(data);
+            result.id = 'result-done';
+          }));
+        } catch (err) {
+          result.textContent = JSON.stringify({error: String(err)});
+          result.id = 'result-error';
+        }
+      }, 2200);
+    });
+  </script>
+</body>
+</html>
