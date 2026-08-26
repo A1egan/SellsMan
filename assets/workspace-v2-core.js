@@ -2,6 +2,18 @@
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
   root.WorkspaceV2Core = api;
+
+  // Browser-only enhancement loader. Keeping the board layer isolated lets us
+  // improve density/drag performance without rewriting the large legacy engine.
+  if (typeof document !== 'undefined' && !document.querySelector('script[data-workspace-board-enhancement="1"]')) {
+    const current = document.currentScript;
+    const base = current && current.src ? current.src.replace(/[^/]+(?:\?.*)?$/, '') : 'assets/';
+    const boardScript = document.createElement('script');
+    boardScript.src = base + 'workspace-v2-board.js';
+    boardScript.async = true;
+    boardScript.dataset.workspaceBoardEnhancement = '1';
+    document.head.appendChild(boardScript);
+  }
 })(typeof globalThis !== 'undefined' ? globalThis : this, function() {
   'use strict';
 
