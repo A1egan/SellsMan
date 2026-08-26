@@ -46,12 +46,30 @@ const deferred = core.deferTasks([planned], [planned.id], 2100);
 assert.equal(deferred[0].status, 'deferred');
 assert.equal(deferred[0].deferredAt, 2100);
 
+const justCompleted = core.completeTasks([activeTask], [activeTask.id], 2200);
+assert.equal(justCompleted[0].status, 'completed');
+assert.equal(justCompleted[0].completedAt, 2200);
+const reopened = core.reopenTasks(justCompleted, [activeTask.id], 2300);
+assert.equal(reopened[0].status, 'active');
+assert.equal(reopened[0].completedAt, 0);
+
 const sorted = core.sortTasks([
   core.normalizeTask({ id: 'n', title: 'normal', status: 'active', priority: 'normal', sortOrder: 3 }),
   core.normalizeTask({ id: 'u', title: 'urgent', status: 'active', priority: 'urgent', sortOrder: 9 }),
   core.normalizeTask({ id: 'i', title: 'important', status: 'active', priority: 'important', sortOrder: 1 }),
 ]);
 assert.deepEqual(sorted.map(t => t.id), ['u', 'i', 'n']);
+
+const partition = core.partitionTasks([
+  activeTask,
+  completed,
+  planned,
+  deferred[0],
+], '2026-08-27');
+assert.equal(partition.active.length, 1);
+assert.equal(partition.completed.length, 1);
+assert.equal(partition.rollover.length, 1);
+assert.equal(partition.deferred.length, 1);
 
 const malformed = core.normalizeTask({ id: '', title: 123, status: '???', priority: '???', sortOrder: 'x' });
 assert.ok(malformed.id.startsWith('wt_'));
