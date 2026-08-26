@@ -1,0 +1,185 @@
+/* Customer board density + drag performance overrides.
+   Loaded only by workspace-v2-board.js so the rest of the CRM keeps its existing sizing. */
+
+.workspace-view[data-view="board"] .board {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  align-items: start;
+  overflow-x: hidden !important;
+  overflow-y: auto;
+  padding: 9px 10px 16px !important;
+}
+
+.workspace-view[data-view="board"] .column {
+  flex: none !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  border-radius: 9px;
+}
+
+.workspace-view[data-view="board"] .column-header {
+  min-width: 0;
+  padding: 8px 8px;
+  border-radius: 9px 9px 0 0;
+  gap: 5px;
+}
+
+.workspace-view[data-view="board"] .column-title {
+  min-width: 0;
+  gap: 5px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.workspace-view[data-view="board"] .column-badge {
+  padding: 1px 5px;
+  font-size: 9px;
+}
+
+.workspace-view[data-view="board"] .col-filter-btn {
+  max-width: 72px;
+  padding: 2px 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 9px;
+}
+
+.workspace-view[data-view="board"] .column-body,
+.workspace-view[data-view="board"] .column-body[data-col="pending"] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 5px !important;
+  align-items: start;
+  min-width: 0;
+  padding: 6px !important;
+  transition: background .12s ease;
+  contain: layout paint style;
+}
+
+.workspace-view[data-view="board"] .card {
+  min-width: 0;
+  padding: 5px 6px !important;
+  border-radius: 7px;
+  content-visibility: auto;
+  contain-intrinsic-size: 72px;
+}
+
+.workspace-view[data-view="board"] .card-top {
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.workspace-view[data-view="board"] .card-number {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px !important;
+}
+
+.workspace-view[data-view="board"] .card-meta {
+  gap: 4px;
+  font-size: 9px;
+}
+
+.workspace-view[data-view="board"] .card-note {
+  display: -webkit-box !important;
+  margin-top: 3px;
+  padding: 4px 5px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-size: 9.5px;
+  line-height: 1.35;
+}
+
+.workspace-view[data-view="board"] .card-followup {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 8.5px;
+}
+
+.workspace-view[data-view="board"] .card-actions {
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.workspace-view[data-view="board"] .card-action-btn {
+  min-width: 0;
+  padding: 2px 5px;
+  font-size: 8.5px;
+}
+
+/* Native HTML5 drag can become paint-heavy with hundreds of cards.
+   During a drag, freeze decorative effects and make card children transparent to hit-testing. */
+body.board-drag-active .workspace-view[data-view="board"] .card,
+body.board-drag-active .workspace-view[data-view="board"] .card:hover,
+body.board-drag-active .workspace-view[data-view="board"] .column-body {
+  transition: none !important;
+  animation: none !important;
+}
+
+body.board-drag-active .workspace-view[data-view="board"] .card,
+body.board-drag-active .workspace-view[data-view="board"] .card:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+body.board-drag-active .workspace-view[data-view="board"] .card * {
+  pointer-events: none !important;
+}
+
+body.board-drag-active .workspace-view[data-view="board"] .card.dragging {
+  opacity: .34 !important;
+  outline: 2px dashed #6356d9;
+  outline-offset: -2px;
+}
+
+body.board-drag-active .workspace-view[data-view="board"] .column-body.drag-over {
+  background: #ece9ff !important;
+  box-shadow: inset 0 0 0 2px rgba(99, 86, 217, .45);
+}
+
+@media (min-width: 1800px) {
+  .workspace-view[data-view="board"] .board {
+    gap: 10px !important;
+    padding-inline: 12px !important;
+  }
+
+  .workspace-view[data-view="board"] .column-body,
+  .workspace-view[data-view="board"] .column-body[data-col="pending"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  .workspace-view[data-view="board"] .card-note {
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+}
+
+/* Below desktop working width, keep cards readable and let the board scroll horizontally. */
+@media (max-width: 1339px) {
+  .workspace-view[data-view="board"] .board {
+    display: flex !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    overflow-y: auto;
+    overscroll-behavior-x: contain;
+  }
+
+  .workspace-view[data-view="board"] .column {
+    flex: 0 0 248px !important;
+    width: 248px !important;
+    min-width: 248px !important;
+  }
+
+  .workspace-view[data-view="board"] .column-body,
+  .workspace-view[data-view="board"] .column-body[data-col="pending"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
