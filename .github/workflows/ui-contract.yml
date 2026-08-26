@@ -2,7 +2,7 @@ name: UI contract
 
 on:
   push:
-    branches: [design/crm-ui-workbench]
+    branches: [design/crm-workspace-v2]
   pull_request:
     branches: [main]
 
@@ -18,3 +18,5 @@ jobs:
         with:
           python-version: '3.12'
       - run: python tests/test_ui_contract.py
+      - run: python tests/test_workspace_v2_contract.py
+      - run: node tests/test_workspace_v2_core.js
