@@ -38,6 +38,22 @@
               const rightButton = doc.getElementById('workspaceBoardScrollRight');
               const controlsPresent = !!(leftButton && rightButton);
               const rightEnabledBeforeClick = !!(rightButton && !rightButton.disabled);
+
+              const originalScrollTo = board.scrollTo.bind(board);
+              let scrollToCalled = false;
+              let requestedLeft = null;
+              let requestedBehavior = null;
+              board.scrollTo = function(arg1, arg2) {
+                scrollToCalled = true;
+                if (typeof arg1 === 'object' && arg1) {
+                  requestedLeft = Number(arg1.left);
+                  requestedBehavior = arg1.behavior || null;
+                } else {
+                  requestedLeft = Number(arg1);
+                }
+                return originalScrollTo(arg1, arg2);
+              };
+
               if (rightButton) rightButton.click();
 
               setTimeout(() => {
@@ -52,6 +68,9 @@
                   lastColumnVisibleAfterDirectScroll: lastRect.left < boardRect.right && lastRect.right > boardRect.left,
                   controlsPresent,
                   rightEnabledBeforeClick,
+                  scrollToCalled,
+                  requestedLeft,
+                  requestedBehavior,
                   buttonScrollWorks: board.scrollLeft > 100,
                   buttonAfter: board.scrollLeft,
                   columnCount: columns.length,
