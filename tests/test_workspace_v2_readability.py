@@ -5,9 +5,13 @@ css = Path('assets/workspace-v2.css').read_text(encoding='utf-8')
 
 
 def block(selector: str) -> str:
-    # A selector can appear multiple times as later CSS overrides refine it.
-    # Read the last matching block because that is the effective cascade layer.
-    matches = re.findall(re.escape(selector) + r'[^\{]*\{([^}]*)\}', css, re.S)
+    # Read the last rule that contains this exact selector. Splitting grouped
+    # selector headers avoids confusing `.board` with `.board::...` rules.
+    matches = []
+    for header, body in re.findall(r'([^{}]+)\{([^{}]*)\}', css, re.S):
+        selectors = [part.strip() for part in header.split(',')]
+        if selector in selectors:
+            matches.append(body)
     assert matches, f'missing selector: {selector}'
     return matches[-1]
 
