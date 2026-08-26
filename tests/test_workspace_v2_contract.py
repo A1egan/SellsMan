@@ -50,6 +50,10 @@ for token in [
     'crm-radar',
     'recent-customers',
     'customer-drawer',
+    'wsTaskHistoryModal',
+    'openTaskHistory',
+    'tomorrowPlanned',
+    '+ 工作计划',
 ]:
     assert token in app or token in css, f'missing workspace token: {token}'
 
@@ -60,7 +64,10 @@ for fn in [
     'getRolloverCandidates',
     'activateTasks',
     'deferTasks',
+    'completeTasks',
+    'reopenTasks',
     'sortTasks',
+    'partitionTasks',
 ]:
     assert fn in core, f'missing core function: {fn}'
 
