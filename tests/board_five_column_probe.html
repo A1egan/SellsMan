@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>Board five-column probe</title></head>
+<body style="margin:0">
+  <pre id="result">pending</pre>
+  <iframe id="app" src="../index.html#board" style="border:0"></iframe>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const width = Number(params.get('w') || 1440);
+    const height = Number(params.get('h') || 900);
+    const frame = document.getElementById('app');
+    const result = document.getElementById('result');
+    frame.style.width = width + 'px';
+    frame.style.height = height + 'px';
+
+    function finish(data, ok) {
+      result.textContent = JSON.stringify(data);
+      result.id = ok ? 'result-done' : 'result-error';
+    }
+
+    setTimeout(() => {
+      try {
+        const doc = frame.contentDocument;
+        const board = doc && doc.getElementById('board');
+        const columns = board ? Array.from(board.querySelectorAll(':scope > .column')) : [];
+        const pending = doc && doc.querySelector('.column-body[data-col="pending"]');
+        if (!board || columns.length !== 5 || !pending) throw new Error('board not ready');
+
+        board.scrollLeft = 0;
+        const boardRect = board.getBoundingClientRect();
+        const rects = columns.map(col => col.getBoundingClientRect());
+        const tracks = getComputedStyle(pending).gridTemplateColumns.trim().split(/\s+/).filter(Boolean).length;
+        const overflowPx = Math.max(0, board.scrollWidth - board.clientWidth);
+        const allInside = rects.every(rect => rect.left >= boardRect.left - 2 && rect.right <= boardRect.right + 2);
+        const fit = overflowPx <= 2 && allInside;
+        const expectedTracks = width >= 1800 ? 3 : (width >= 1280 ? 2 : null);
+        const geometryOk = width >= 1280 ? fit && tracks === expectedTracks : overflowPx > 10;
+
+        finish({
+          width,
+          boardClientWidth: board.clientWidth,
+          boardScrollWidth: board.scrollWidth,
+          overflowPx,
+          allInside,
+          fit,
+          tracks,
+          expectedTracks,
+          fallbackOverflow: width < 1280 ? overflowPx > 10 : null,
+          columnWidths: rects.map(r => Math.round(r.width)),
+          firstLeft: Math.round(rects[0].left),
+          lastRight: Math.round(rects[rects.length - 1].right),
+          boardRight: Math.round(boardRect.right)
+        }, geometryOk);
+      } catch (err) {
+        finish({ width, error: String(err) }, false);
+      }
+    }, 3800);
+  </script>
+</body>
+</html>
