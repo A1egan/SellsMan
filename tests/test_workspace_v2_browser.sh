@@ -35,6 +35,18 @@ grep -q 'workspace-view active" data-view="board"' /tmp/sellsman-board.html
 grep -q '客户看板' /tmp/sellsman-board.html
 grep -q '沉默用户' /tmp/sellsman-board.html
 
+# Runtime geometry probe: the real board must overflow horizontally, accept
+# scrollLeft changes, reveal the final stage, and keep its bottom edge inside
+# the board viewport rather than clipping the scrollbar.
+PROBE_COMMON=(--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --virtual-time-budget=6500 --window-size=1500,1000)
+"$CHROME" "${PROBE_COMMON[@]}" --dump-dom 'http://127.0.0.1:8765/tests/board_scroll_probe.html' >/tmp/sellsman-board-probe.html 2>/tmp/sellsman-board-probe.err
+grep -q 'id="result-done"' /tmp/sellsman-board-probe.html
+grep -o '{&quot;clientWidth&quot;[^<]*}' /tmp/sellsman-board-probe.html | head -1 || true
+grep -q '&quot;canOverflow&quot;:true' /tmp/sellsman-board-probe.html
+grep -q '&quot;moved&quot;:true' /tmp/sellsman-board-probe.html
+grep -q '&quot;bottomVisible&quot;:true' /tmp/sellsman-board-probe.html
+grep -q '&quot;lastColumnVisible&quot;:true' /tmp/sellsman-board-probe.html
+
 mkdir -p /tmp/workspace-v2-shots
 "$CHROME" "${COMMON[@]}" --window-size=1440,900 --screenshot=/tmp/workspace-v2-shots/home-1440.png 'http://127.0.0.1:8765/#home' >/dev/null 2>/tmp/sellsman-shot-home.err
 "$CHROME" "${COMMON[@]}" --window-size=1920,1080 --screenshot=/tmp/workspace-v2-shots/home-1920.png 'http://127.0.0.1:8765/#home' >/dev/null 2>/tmp/sellsman-shot-home-wide.err
