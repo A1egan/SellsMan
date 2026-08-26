@@ -165,6 +165,7 @@
     if (legacyTaskBar) boardView.appendChild(legacyTaskBar);
     if (legacyTagBar) boardView.appendChild(legacyTagBar);
     boardView.appendChild(legacyBoard);
+    ensureBoardScrollControls();
 
     document.body.classList.add('workspace-v2-ready');
     const tagModal = document.getElementById('tagModal');
@@ -172,6 +173,56 @@
     buildOwnedModals();
     wireChrome();
     return true;
+  }
+
+  function ensureBoardScrollControls() {
+    const board = document.getElementById('board');
+    const taskBar = document.getElementById('taskBar');
+    if (!board || !taskBar) return;
+
+    let controls = document.getElementById('workspaceBoardScrollControls');
+    if (!controls) {
+      controls = document.createElement('div');
+      controls.className = 'workspace-board-scroll-controls';
+      controls.id = 'workspaceBoardScrollControls';
+      controls.setAttribute('aria-label', '客户看板横向移动');
+      controls.innerHTML = `
+        <button class="workspace-board-scroll-btn" id="workspaceBoardScrollLeft" type="button" aria-label="向左查看客户栏目">← 左移</button>
+        <button class="workspace-board-scroll-btn" id="workspaceBoardScrollRight" type="button" aria-label="向右查看客户栏目">右移 →</button>`;
+      taskBar.appendChild(controls);
+      controls.querySelector('#workspaceBoardScrollLeft').addEventListener('click', () => scrollBoardByColumn(-1));
+      controls.querySelector('#workspaceBoardScrollRight').addEventListener('click', () => scrollBoardByColumn(1));
+    }
+
+    if (!board.dataset.workspaceScrollBound) {
+      board.dataset.workspaceScrollBound = '1';
+      board.addEventListener('scroll', syncBoardScrollControls, { passive: true });
+      addEventListener('resize', syncBoardScrollControls, { passive: true });
+    }
+    syncBoardScrollControls();
+  }
+
+  function scrollBoardByColumn(direction) {
+    const board = document.getElementById('board');
+    if (!board) return;
+    const column = board.querySelector('.column');
+    const boardStyle = getComputedStyle(board);
+    const gap = parseFloat(boardStyle.columnGap || boardStyle.gap) || 10;
+    const step = column ? column.getBoundingClientRect().width + gap : Math.max(320, board.clientWidth * .72);
+    const max = Math.max(0, board.scrollWidth - board.clientWidth);
+    const target = Math.max(0, Math.min(max, board.scrollLeft + direction * step));
+    board.scrollTo({ left: target, behavior: 'smooth' });
+    setTimeout(syncBoardScrollControls, 360);
+  }
+
+  function syncBoardScrollControls() {
+    const board = document.getElementById('board');
+    const left = document.getElementById('workspaceBoardScrollLeft');
+    const right = document.getElementById('workspaceBoardScrollRight');
+    if (!board || !left || !right) return;
+    const max = Math.max(0, board.scrollWidth - board.clientWidth);
+    left.disabled = board.scrollLeft <= 4;
+    right.disabled = max <= 4 || board.scrollLeft >= max - 4;
   }
 
   function navButton(route, icon, label) {
@@ -327,7 +378,7 @@
     updateSidebarCounts();
     if (state.route === 'home') renderHome();
     if (state.route === 'tasks') renderTasksView();
-    if (state.route === 'board' && legacyRender) legacyRender();
+    if (state.route === 'board' && legacyRender) { legacyRender(); ensureBoardScrollControls(); }
     if (state.route === 'search') renderSearchView();
     if (state.route === 'analytics') renderAnalyticsView();
     if (state.route === 'batch') renderBatchView();
