@@ -27,15 +27,16 @@
         if (!menu.classList.contains('show')) throw new Error('tools menu did not open');
 
         const menuRect = menu.getBoundingClientRect();
+        const viewRect = view.getBoundingClientRect();
 
-        // Keep the competitor inside the same production board view. This reproduces
-        // a transformed customer card without inventing a new root-level stacking
-        // context that cannot exist for real board cards.
+        // Keep the competitor inside the same production board view. Use absolute
+        // board-view coordinates so workspace transforms/animations cannot shift
+        // the probe out of the intended overlap area.
         const probeCard = sourceCard.cloneNode(true);
         probeCard.id = 'menuLayerProbeCard';
-        probeCard.style.setProperty('position', 'fixed', 'important');
-        probeCard.style.setProperty('left', `${menuRect.left + 16}px`, 'important');
-        probeCard.style.setProperty('top', `${menuRect.top + 16}px`, 'important');
+        probeCard.style.setProperty('position', 'absolute', 'important');
+        probeCard.style.setProperty('left', `${menuRect.left - viewRect.left + 16}px`, 'important');
+        probeCard.style.setProperty('top', `${menuRect.top - viewRect.top + 16}px`, 'important');
         probeCard.style.setProperty('width', '112px', 'important');
         probeCard.style.setProperty('height', '80px', 'important');
         probeCard.style.setProperty('margin', '0', 'important');
@@ -51,7 +52,7 @@
         const bottom = Math.min(menuRect.bottom, cardRect.bottom);
         const overlapFound = right - left > 8 && bottom - top > 8;
         if (!overlapFound) {
-          finish({ menuOpen: true, overlapFound: false, menuRect, cardRect }, false);
+          finish({ menuOpen: true, overlapFound: false, menuRect, viewRect, cardRect }, false);
           return;
         }
 
