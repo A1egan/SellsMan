@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import subprocess
 
 html = Path('index.html').read_text(encoding='utf-8')
@@ -56,6 +57,34 @@ for token in [
     '+ 工作计划',
 ]:
     assert token in app or token in css, f'missing workspace token: {token}'
+
+# Board density contract: normal desktop fits all five stages; wide desktop gets 3 cards/row.
+for token in [
+    'repeat(5, minmax(0, 1fr))',
+    '@media (min-width: 1800px)',
+    'repeat(3, minmax(0, 1fr))',
+    'board-drag-active',
+]:
+    assert token in css, f'missing board layout/performance CSS token: {token}'
+
+# Board drag contract: workspace v2 overrides the legacy handlers and defers expensive reconciliation.
+for token in [
+    'installBoardDragOptimizations',
+    'scheduleBoardReconcile',
+    'boardDragId',
+    'globalThis.onDragStart',
+    'globalThis.onDragOver',
+    'globalThis.onDrop',
+    'requestIdleCallback',
+    'appendChild',
+]:
+    assert token in app, f'missing optimized board drag token: {token}'
+
+drop_match = re.search(r'globalThis\.onDrop\s*=\s*function\s*\([^)]*\)\s*\{(?P<body>.*?)\n\s*\};', app, re.S)
+assert drop_match, 'optimized onDrop override missing'
+drop_body = drop_match.group('body')
+assert 'legacyRender()' not in drop_body, 'drop must not synchronously full-render the board'
+assert 'scheduleBoardReconcile' in drop_body, 'drop should only queue reconciliation when needed'
 
 for fn in [
     'normalizeRoute',
