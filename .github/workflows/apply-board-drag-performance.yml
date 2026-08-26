@@ -5,6 +5,8 @@ on:
     branches: [feat/board-five-column-performance]
     paths:
       - scripts/apply_board_drag_performance.py
+      - tests/board_drag_performance_probe.html
+      - tests/test_board_drag_runtime.sh
       - .github/workflows/apply-board-drag-performance.yml
 
 permissions:
