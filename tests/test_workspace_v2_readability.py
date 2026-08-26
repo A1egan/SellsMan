@@ -5,10 +5,11 @@ css = Path('assets/workspace-v2.css').read_text(encoding='utf-8')
 
 
 def block(selector: str) -> str:
-    # A selector can be the first item in a comma-separated selector group.
-    match = re.search(re.escape(selector) + r'[^\{]*\{([^}]*)\}', css, re.S)
-    assert match, f'missing selector: {selector}'
-    return match.group(1)
+    # A selector can appear multiple times as later CSS overrides refine it.
+    # Read the last matching block because that is the effective cascade layer.
+    matches = re.findall(re.escape(selector) + r'[^\{]*\{([^}]*)\}', css, re.S)
+    assert matches, f'missing selector: {selector}'
+    return matches[-1]
 
 
 def font_size(selector: str) -> float:
