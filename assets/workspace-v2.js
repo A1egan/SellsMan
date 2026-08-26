@@ -211,7 +211,7 @@
     const step = column ? column.getBoundingClientRect().width + gap : Math.max(320, board.clientWidth * .72);
     const max = Math.max(0, board.scrollWidth - board.clientWidth);
     const target = Math.max(0, Math.min(max, board.scrollLeft + direction * step));
-    board.scrollTo({ left: target, behavior: 'smooth' });
+    board.scrollLeft = target;
     setTimeout(syncBoardScrollControls, 360);
   }
 
