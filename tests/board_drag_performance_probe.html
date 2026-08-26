@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>Board drag performance probe</title></head>
+<body>
+  <pre id="result">pending</pre>
+  <iframe id="app" src="../index.html#board" style="width:1440px;height:900px;border:0"></iframe>
+  <script>
+    const frame = document.getElementById('app');
+    const result = document.getElementById('result');
+
+    function finish(data, ok) {
+      result.textContent = JSON.stringify(data);
+      result.id = ok ? 'result-done' : 'result-error';
+    }
+
+    setTimeout(() => {
+      const win = frame.contentWindow;
+      const doc = frame.contentDocument;
+      let proto = null;
+      let originalAdd = null;
+      try {
+        const sourceCard = doc && doc.querySelector('.column-body .card[draggable="true"]');
+        if (!sourceCard) throw new Error('no draggable customer card');
+        const sourceId = sourceCard.dataset.id;
+        const sourceBody = sourceCard.closest('.column-body');
+        const sourceCol = sourceBody && sourceBody.dataset.col;
+        const targetBody = Array.from(doc.querySelectorAll('.column-body')).find(el => el.dataset.col !== sourceCol);
+        if (!sourceCol || !targetBody) throw new Error('drag source/target not ready');
+        const targetCol = targetBody.dataset.col;
+
+        let renderCount = 0;
+        const originalRender = win.render;
+        win.render = function(...args) {
+          renderCount++;
+          return originalRender.apply(this, args);
+        };
+
+        let dragOverAdds = 0;
+        proto = win.DOMTokenList.prototype;
+        originalAdd = proto.add;
+        proto.add = function(...tokens) {
+          if (this === targetBody.classList && tokens.includes('drag-over')) dragOverAdds++;
+          return originalAdd.apply(this, tokens);
+        };
+
+        const dataTransfer = { effectAllowed: '', dropEffect: '' };
+        const eventFor = (target, currentTarget) => ({
+          target,
+          currentTarget,
+          dataTransfer,
+          preventDefault() {}
+        });
+
+        win.onDragStart(eventFor(sourceCard, sourceCard), sourceId);
+        const dragActiveDuring = doc.body.classList.contains('board-drag-active');
+        const transitionDuring = getComputedStyle(sourceCard).transitionDuration;
+
+        for (let i = 0; i < 25; i++) {
+          win.onDragOver(eventFor(targetBody, targetBody));
+        }
+
+        win.onDrop(eventFor(targetBody, targetBody));
+        const movedUser = win.eval(`users.find(u => u.id === ${JSON.stringify(sourceId)})`);
+        const moved = !!movedUser && movedUser.column === targetCol;
+
+        let persisted = false;
+        try {
+          const raw = JSON.parse(win.localStorage.getItem('sales_followup_data_v3') || '[]');
+          const list = Array.isArray(raw) ? raw : (Array.isArray(raw.users) ? raw.users : []);
+          persisted = list.some(u => u.id === sourceId && u.column === targetCol);
+        } catch (_) {}
+
+        const dragActiveAfter = doc.body.classList.contains('board-drag-active');
+        const optimized = dragActiveDuring && transitionDuring === '0s' && dragOverAdds <= 2 && moved && persisted && renderCount === 0 && !dragActiveAfter;
+
+        if (proto && originalAdd) proto.add = originalAdd;
+        win.render = originalRender;
+
+        finish({
+          sourceId,
+          sourceCol,
+          targetCol,
+          dragActiveDuring,
+          transitionDuring,
+          dragOverAdds,
+          renderCount,
+          moved,
+          persisted,
+          dragActiveAfter,
+          optimized
+        }, optimized);
+      } catch (err) {
+        if (proto && originalAdd) proto.add = originalAdd;
+        finish({ error: String(err) }, false);
+      }
+    }, 4200);
+  </script>
+</body>
+</html>
