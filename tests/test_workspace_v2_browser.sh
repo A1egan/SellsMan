@@ -24,6 +24,7 @@ grep -q '今日作战台' /tmp/sellsman-home.html
 grep -q 'CRM 雷达' /tmp/sellsman-home.html
 grep -q '今日计划' /tmp/sellsman-home.html
 grep -q '明日计划' /tmp/sellsman-home.html
+grep -q '任务历史' /tmp/sellsman-home.html
 grep -q 'customer-drawer' /tmp/sellsman-home.html
 
 grep -q 'id="board"' /tmp/sellsman-home.html
@@ -34,6 +35,11 @@ grep -q 'workspace-view active" data-view="board"' /tmp/sellsman-board.html
 grep -q '客户看板' /tmp/sellsman-board.html
 grep -q '沉默用户' /tmp/sellsman-board.html
 
+mkdir -p /tmp/workspace-v2-shots
+"$CHROME" "${COMMON[@]}" --window-size=1440,900 --screenshot=/tmp/workspace-v2-shots/home-1440.png 'http://127.0.0.1:8765/#home' >/dev/null 2>/tmp/sellsman-shot-home.err
+"$CHROME" "${COMMON[@]}" --window-size=1920,1080 --screenshot=/tmp/workspace-v2-shots/home-1920.png 'http://127.0.0.1:8765/#home' >/dev/null 2>/tmp/sellsman-shot-home-wide.err
+"$CHROME" "${COMMON[@]}" --window-size=1440,900 --screenshot=/tmp/workspace-v2-shots/board-1440.png 'http://127.0.0.1:8765/#board' >/dev/null 2>/tmp/sellsman-shot-board.err
+
 # A runtime crash normally prevents the shell/home content from appearing;
-# print Chrome diagnostics only after assertions succeed to keep CI readable.
+# screenshots are uploaded by CI for visual inspection.
 echo 'Workspace v2 browser smoke OK'
