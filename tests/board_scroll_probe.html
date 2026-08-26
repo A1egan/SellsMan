@@ -1,92 +1,112 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta charset="utf-8"><title>Board scroll probe</title></head>
+<head><meta charset="utf-8"><title>Board responsive geometry probe</title></head>
 <body>
   <pre id="result">pending</pre>
-  <iframe id="app" src="../index.html#board" style="width:1440px;height:900px;border:0"></iframe>
+  <iframe id="appDesktop" src="../index.html#board" style="width:1440px;height:900px;border:0"></iframe>
+  <iframe id="appNarrow" src="../index.html#board" style="width:1200px;height:900px;border:0"></iframe>
   <script>
-    const frame = document.getElementById('app');
+    const desktopFrame = document.getElementById('appDesktop');
+    const narrowFrame = document.getElementById('appNarrow');
     const result = document.getElementById('result');
+    const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
     function finish(data, ok) {
       result.textContent = JSON.stringify(data);
       result.id = ok ? 'result-done' : 'result-error';
     }
 
-    setTimeout(() => {
+    function getBoardState(frame) {
+      const doc = frame.contentDocument;
+      const board = doc && doc.getElementById('board');
+      const view = doc && doc.querySelector('.workspace-view[data-view="board"]');
+      if (!board || !view) throw new Error('board workspace not ready');
+      const columns = Array.from(board.querySelectorAll('.column'));
+      if (columns.length !== 5) throw new Error('expected five board columns');
+      return { doc, board, view, columns };
+    }
+
+    setTimeout(async () => {
       try {
-        const doc = frame.contentDocument;
-        const board = doc && doc.getElementById('board');
-        const view = doc && doc.querySelector('.workspace-view[data-view="board"]');
-        if (!board || !view) throw new Error('board workspace not ready');
-        const columns = Array.from(board.querySelectorAll('.column'));
-        if (!columns.length) throw new Error('board columns not rendered');
+        const desktop = getBoardState(desktopFrame);
+        const desktopBoardRect = desktop.board.getBoundingClientRect();
+        const desktopViewRect = desktop.view.getBoundingClientRect();
+        const desktopFirstRect = desktop.columns[0].getBoundingClientRect();
+        const desktopLastRect = desktop.columns[desktop.columns.length - 1].getBoundingClientRect();
+        const desktopMaxScroll = Math.max(0, desktop.board.scrollWidth - desktop.board.clientWidth);
+        const desktopLastVisible = desktopLastRect.left < desktopBoardRect.right + 1 && desktopLastRect.right <= desktopBoardRect.right + 1;
+        const desktopFirstVisible = desktopFirstRect.left >= desktopBoardRect.left - 1 && desktopFirstRect.right > desktopBoardRect.left;
+        const desktopFits = desktopMaxScroll <= 2 && desktopFirstVisible && desktopLastVisible;
 
-        const maxScroll = Math.max(0, board.scrollWidth - board.clientWidth);
-        board.scrollLeft = maxScroll;
+        const narrow = getBoardState(narrowFrame);
+        const narrowBoardRect = narrow.board.getBoundingClientRect();
+        const narrowViewRect = narrow.view.getBoundingClientRect();
+        const narrowMaxScroll = Math.max(0, narrow.board.scrollWidth - narrow.board.clientWidth);
+        narrow.board.scrollLeft = narrowMaxScroll;
+        await sleep(180);
 
-        setTimeout(() => {
-          try {
-            const boardRect = board.getBoundingClientRect();
-            const viewRect = view.getBoundingClientRect();
-            const lastRect = columns[columns.length - 1].getBoundingClientRect();
-            const structuralMoved = board.scrollLeft > 100;
+        const narrowLastRect = narrow.columns[narrow.columns.length - 1].getBoundingClientRect();
+        const narrowDirectAfter = narrow.board.scrollLeft;
+        const narrowDirectScrollWorks = narrowDirectAfter > 100;
+        const narrowLastVisible = narrowLastRect.left < narrowBoardRect.right && narrowLastRect.right > narrowBoardRect.left;
 
-            board.scrollLeft = 0;
-            setTimeout(() => {
-              const leftButton = doc.getElementById('workspaceBoardScrollLeft');
-              const rightButton = doc.getElementById('workspaceBoardScrollRight');
-              const controlsPresent = !!(leftButton && rightButton);
-              const rightEnabledBeforeClick = !!(rightButton && !rightButton.disabled);
+        narrow.board.scrollLeft = 0;
+        await sleep(180);
 
-              const originalScrollTo = board.scrollTo.bind(board);
-              let scrollToCalled = false;
-              let requestedLeft = null;
-              let requestedBehavior = null;
-              board.scrollTo = function(arg1, arg2) {
-                scrollToCalled = true;
-                if (typeof arg1 === 'object' && arg1) {
-                  requestedLeft = Number(arg1.left);
-                  requestedBehavior = arg1.behavior || null;
-                } else {
-                  requestedLeft = Number(arg1);
-                }
-                return originalScrollTo(arg1, arg2);
-              };
+        const leftButton = narrow.doc.getElementById('workspaceBoardScrollLeft');
+        const rightButton = narrow.doc.getElementById('workspaceBoardScrollRight');
+        const narrowControlsPresent = !!(leftButton && rightButton);
+        const narrowRightEnabledBeforeClick = !!(rightButton && !rightButton.disabled);
 
-              if (rightButton) rightButton.click();
-
-              setTimeout(() => {
-                finish({
-                  clientWidth: board.clientWidth,
-                  scrollWidth: board.scrollWidth,
-                  maxScroll,
-                  directAfter: structuralMoved ? maxScroll : board.scrollLeft,
-                  canOverflow: maxScroll > 100,
-                  directScrollWorks: structuralMoved,
-                  bottomVisible: boardRect.bottom <= viewRect.bottom + 1,
-                  lastColumnVisibleAfterDirectScroll: lastRect.left < boardRect.right && lastRect.right > boardRect.left,
-                  controlsPresent,
-                  rightEnabledBeforeClick,
-                  scrollToCalled,
-                  requestedLeft,
-                  requestedBehavior,
-                  buttonScrollWorks: board.scrollLeft > 100,
-                  buttonAfter: board.scrollLeft,
-                  columnCount: columns.length,
-                  boardBottom: Math.round(boardRect.bottom),
-                  viewBottom: Math.round(viewRect.bottom)
-                }, true);
-              }, 700);
-            }, 180);
-          } catch (err) {
-            finish({error: String(err)}, false);
+        const originalScrollTo = narrow.board.scrollTo.bind(narrow.board);
+        let scrollToCalled = false;
+        let requestedLeft = null;
+        let requestedBehavior = null;
+        narrow.board.scrollTo = function(arg1, arg2) {
+          scrollToCalled = true;
+          if (typeof arg1 === 'object' && arg1) {
+            requestedLeft = Number(arg1.left);
+            requestedBehavior = arg1.behavior || null;
+          } else {
+            requestedLeft = Number(arg1);
           }
-        }, 150);
+          return originalScrollTo(arg1, arg2);
+        };
+
+        if (rightButton) rightButton.click();
+        await sleep(700);
+
+        finish({
+          desktopClientWidth: desktop.board.clientWidth,
+          desktopScrollWidth: desktop.board.scrollWidth,
+          desktopMaxScroll,
+          desktopNoOverflow: desktopMaxScroll <= 2,
+          desktopFirstColumnVisible: desktopFirstVisible,
+          desktopLastColumnVisible: desktopLastVisible,
+          desktopFits,
+          desktopBottomVisible: desktopBoardRect.bottom <= desktopViewRect.bottom + 1,
+          desktopColumnCount: desktop.columns.length,
+          narrowClientWidth: narrow.board.clientWidth,
+          narrowScrollWidth: narrow.board.scrollWidth,
+          narrowMaxScroll,
+          narrowCanOverflow: narrowMaxScroll > 100,
+          narrowDirectScrollWorks,
+          narrowDirectAfter,
+          narrowLastColumnVisibleAfterDirectScroll: narrowLastVisible,
+          narrowBottomVisible: narrowBoardRect.bottom <= narrowViewRect.bottom + 1,
+          narrowControlsPresent,
+          narrowRightEnabledBeforeClick,
+          scrollToCalled,
+          requestedLeft,
+          requestedBehavior,
+          narrowButtonScrollWorks: narrow.board.scrollLeft > 100,
+          narrowButtonAfter: narrow.board.scrollLeft,
+          narrowColumnCount: narrow.columns.length
+        }, true);
       } catch (err) {
-        finish({error: String(err)}, false);
+        finish({ error: String(err) }, false);
       }
-    }, 3600);
+    }, 4200);
   </script>
 </body>
 </html>

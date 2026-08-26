@@ -13,6 +13,20 @@
       result.id = ok ? 'result-done' : 'result-error';
     }
 
+    function findOverlap(menuRect, cards) {
+      for (const card of cards) {
+        const rect = card.getBoundingClientRect();
+        const left = Math.max(menuRect.left, rect.left);
+        const right = Math.min(menuRect.right, rect.right);
+        const top = Math.max(menuRect.top, rect.top);
+        const bottom = Math.min(menuRect.bottom, rect.bottom);
+        if (right - left > 8 && bottom - top > 8) {
+          return { card, overlap: { left, right, top, bottom } };
+        }
+      }
+      return null;
+    }
+
     setTimeout(() => {
       try {
         const doc = frame.contentDocument;
@@ -24,28 +38,32 @@
         button.click();
         if (!menu.classList.contains('show')) throw new Error('tools menu did not open');
 
-        const menuRect = menu.getBoundingClientRect();
+        let menuRect = menu.getBoundingClientRect();
         const cards = Array.from(doc.querySelectorAll('.card'));
-        let overlapCard = null;
-        let overlap = null;
+        let hit = findOverlap(menuRect, cards);
+        let forcedOverlap = false;
 
-        for (const card of cards) {
-          const rect = card.getBoundingClientRect();
-          const left = Math.max(menuRect.left, rect.left);
-          const right = Math.min(menuRect.right, rect.right);
-          const top = Math.max(menuRect.top, rect.top);
-          const bottom = Math.min(menuRect.bottom, rect.bottom);
-          if (right - left > 8 && bottom - top > 8) {
-            overlapCard = card;
-            overlap = { left, right, top, bottom };
-            break;
-          }
+        // The five-column overview can legitimately leave the menu above an empty/rightmost
+        // stage, so natural overlap is no longer guaranteed. If needed, move only the menu
+        // inside its existing header stacking context to a visible card; this keeps the probe
+        // about z-index/stacking rather than depending on a specific board geometry.
+        if (!hit && cards.length) {
+          const firstRect = cards[0].getBoundingClientRect();
+          const dx = firstRect.left + 12 - (menuRect.left + 12);
+          const dy = firstRect.top + 12 - (menuRect.top + 12);
+          menu.style.transform = `translate(${dx}px, ${dy}px)`;
+          menuRect = menu.getBoundingClientRect();
+          hit = findOverlap(menuRect, cards);
+          forcedOverlap = true;
         }
 
-        if (!overlapCard || !overlap) {
-          finish({ menuOpen: true, overlapFound: false }, false);
+        if (!hit) {
+          finish({ menuOpen: true, overlapFound: false, forcedOverlap }, false);
           return;
         }
+
+        const overlapCard = hit.card;
+        const overlap = hit.overlap;
 
         // Reproduce the same stacking context created by the production .card:hover transform.
         overlapCard.style.transform = 'translateY(-2px)';
@@ -58,6 +76,7 @@
         finish({
           menuOpen: true,
           overlapFound: true,
+          forcedOverlap,
           topmostInMenu,
           topmostTag: topmost ? topmost.tagName : null,
           topmostClass: topmost ? topmost.className : null,

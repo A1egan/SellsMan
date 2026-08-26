@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>Board drag performance probe</title></head>
+<body>
+  <pre id="result">pending</pre>
+  <iframe id="app" src="../index.html#board" style="width:1440px;height:900px;border:0"></iframe>
+  <script>
+    const frame = document.getElementById('app');
+    const result = document.getElementById('result');
+    const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+    function finish(data, ok) {
+      result.textContent = JSON.stringify(data);
+      result.id = ok ? 'result-done' : 'result-error';
+    }
+
+    setTimeout(async () => {
+      try {
+        const win = frame.contentWindow;
+        const doc = frame.contentDocument;
+        const sourceBody = doc && doc.querySelector('.column-body[data-col="pending"]');
+        const targetBody = doc && doc.querySelector('.column-body[data-col="contacting"]');
+        const sourceCards = sourceBody ? Array.from(sourceBody.querySelectorAll('.card')).slice(0, 2) : [];
+        if (!win || !doc || !sourceBody || !targetBody || sourceCards.length < 2) throw new Error('drag fixture not ready');
+        if (!win.WorkspaceV2Board || typeof win.onDragStart !== 'function' || typeof win.onDrop !== 'function') {
+          throw new Error('optimized board drag layer not loaded');
+        }
+
+        const firstCard = sourceCards[0];
+        const secondCard = sourceCards[1];
+        const firstId = firstCard.dataset.id;
+        const secondId = secondCard.dataset.id;
+        if (!firstId || !secondId) throw new Error('source cards missing data-id');
+
+        const sourceCountBefore = Number(doc.getElementById('count-pending').textContent || 0);
+        const targetCountBefore = Number(doc.getElementById('count-contacting').textContent || 0);
+        const originalRender = win.render;
+        let renderCalls = 0;
+        win.render = function() {
+          renderCalls += 1;
+          return originalRender.apply(this, arguments);
+        };
+
+        const dataTransfer = {
+          effectAllowed: '',
+          dropEffect: '',
+          setData() {},
+        };
+        const overEvent = { preventDefault() {}, currentTarget: targetBody, dataTransfer };
+        const dropEvent = { preventDefault() {}, currentTarget: targetBody };
+
+        // Move the second card first, then the first card. A DOM append-only
+        // implementation would leave them reversed; the optimized path must keep
+        // the same CRM sort order without needing a synchronous full render.
+        win.onDragStart({ currentTarget: secondCard, target: secondCard, dataTransfer }, secondId);
+        const dragClassDuring = doc.body.classList.contains('board-drag-active');
+        const draggingClassDuring = secondCard.classList.contains('dragging');
+        const pointerEventsDuring = getComputedStyle(secondCard).pointerEvents;
+        win.onDragOver(overEvent);
+        win.onDragOver(overEvent);
+        const activeHighlightsDuring = doc.querySelectorAll('.column-body.drag-over').length;
+        win.onDrop(dropEvent);
+
+        win.onDragStart({ currentTarget: firstCard, target: firstCard, dataTransfer }, firstId);
+        win.onDragOver(overEvent);
+        win.onDrop(dropEvent);
+
+        const renderCallsImmediate = renderCalls;
+        const movedImmediately = firstCard.parentElement === targetBody && secondCard.parentElement === targetBody;
+        const immediateTargetIds = Array.from(targetBody.querySelectorAll('.card')).slice(0, 2).map(card => card.dataset.id);
+        const immediateSortedOrder = immediateTargetIds[0] === firstId && immediateTargetIds[1] === secondId;
+        const dragClassAfterDrop = doc.body.classList.contains('board-drag-active');
+        const highlightCountAfterDrop = doc.querySelectorAll('.column-body.drag-over').length;
+        const sourceCountImmediate = Number(doc.getElementById('count-pending').textContent || 0);
+        const targetCountImmediate = Number(doc.getElementById('count-contacting').textContent || 0);
+        const stored = JSON.parse(win.localStorage.getItem('sales_followup_data_v3') || '[]');
+        const storedFirst = Array.isArray(stored) ? stored.find(user => user.id === firstId) : null;
+        const storedSecond = Array.isArray(stored) ? stored.find(user => user.id === secondId) : null;
+        const persistedImmediately = !!(storedFirst && storedSecond && storedFirst.column === 'contacting' && storedSecond.column === 'contacting');
+
+        await sleep(1200);
+        const renderCallsAfterIdle = renderCalls;
+        const reconciledIds = [firstId, secondId].filter(id => doc.querySelector('.column-body[data-col="contacting"] .card[data-id="' + id + '"]'));
+        const persistedAfterIdle = reconciledIds.length === 2;
+
+        const ok = dragClassDuring && draggingClassDuring && pointerEventsDuring === 'none' &&
+          activeHighlightsDuring === 1 && movedImmediately && immediateSortedOrder && renderCallsImmediate === 0 &&
+          !dragClassAfterDrop && highlightCountAfterDrop === 0 && persistedImmediately && persistedAfterIdle &&
+          sourceCountImmediate === sourceCountBefore - 2 && targetCountImmediate === targetCountBefore + 2 &&
+          renderCallsAfterIdle <= 1;
+
+        finish({
+          optimizedLayerLoaded: true,
+          dragClassDuring,
+          draggingClassDuring,
+          pointerEventsDuring,
+          activeHighlightsDuring,
+          movedImmediately,
+          immediateSortedOrder,
+          immediateTargetIds,
+          renderCallsImmediate,
+          renderCallsAfterIdle,
+          dragClassAfterDrop,
+          highlightCountAfterDrop,
+          sourceCountBefore,
+          sourceCountImmediate,
+          targetCountBefore,
+          targetCountImmediate,
+          persistedImmediately,
+          persistedAfterIdle
+        }, ok);
+      } catch (err) {
+        finish({ error: String(err) }, false);
+      }
+    }, 4200);
+  </script>
+</body>
+</html>
