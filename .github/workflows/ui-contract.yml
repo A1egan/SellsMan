@@ -19,6 +19,7 @@ jobs:
           python-version: '3.12'
       - run: python tests/test_ui_contract.py
       - run: python tests/test_workspace_v2_contract.py
+      - run: python tests/test_workspace_v2_readability.py
       - run: node tests/test_workspace_v2_core.js
       - run: bash tests/test_workspace_v2_browser.sh
       - uses: actions/upload-artifact@v4
