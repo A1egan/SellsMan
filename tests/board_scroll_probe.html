@@ -22,7 +22,6 @@
         const columns = Array.from(board.querySelectorAll('.column'));
         if (!columns.length) throw new Error('board columns not rendered');
 
-        const before = board.scrollLeft;
         const maxScroll = Math.max(0, board.scrollWidth - board.clientWidth);
         board.scrollLeft = maxScroll;
 
@@ -31,20 +30,32 @@
             const boardRect = board.getBoundingClientRect();
             const viewRect = view.getBoundingClientRect();
             const lastRect = columns[columns.length - 1].getBoundingClientRect();
-            finish({
-              clientWidth: board.clientWidth,
-              scrollWidth: board.scrollWidth,
-              maxScroll,
-              before,
-              after: board.scrollLeft,
-              canOverflow: maxScroll > 100,
-              moved: board.scrollLeft > before + 100,
-              bottomVisible: boardRect.bottom <= viewRect.bottom + 1,
-              lastColumnVisible: lastRect.left < boardRect.right && lastRect.right > boardRect.left,
-              columnCount: columns.length,
-              boardBottom: Math.round(boardRect.bottom),
-              viewBottom: Math.round(viewRect.bottom)
-            }, true);
+            const structuralMoved = board.scrollLeft > 100;
+
+            board.scrollLeft = 0;
+            const leftButton = doc.getElementById('workspaceBoardScrollLeft');
+            const rightButton = doc.getElementById('workspaceBoardScrollRight');
+            const controlsPresent = !!(leftButton && rightButton);
+            if (rightButton) rightButton.click();
+
+            setTimeout(() => {
+              finish({
+                clientWidth: board.clientWidth,
+                scrollWidth: board.scrollWidth,
+                maxScroll,
+                directAfter: structuralMoved ? maxScroll : board.scrollLeft,
+                canOverflow: maxScroll > 100,
+                directScrollWorks: structuralMoved,
+                bottomVisible: boardRect.bottom <= viewRect.bottom + 1,
+                lastColumnVisibleAfterDirectScroll: lastRect.left < boardRect.right && lastRect.right > boardRect.left,
+                controlsPresent,
+                buttonScrollWorks: board.scrollLeft > 100,
+                buttonAfter: board.scrollLeft,
+                columnCount: columns.length,
+                boardBottom: Math.round(boardRect.bottom),
+                viewBottom: Math.round(viewRect.bottom)
+              }, true);
+            }, 700);
           } catch (err) {
             finish({error: String(err)}, false);
           }
