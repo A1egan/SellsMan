@@ -2,13 +2,14 @@ from pathlib import Path
 import re
 
 css = Path('assets/workspace-v2.css').read_text(encoding='utf-8')
+css_rules = re.sub(r'/\*.*?\*/', '', css, flags=re.S)
 
 
 def block(selector: str) -> str:
     # Read the last rule that contains this exact selector. Splitting grouped
     # selector headers avoids confusing `.board` with `.board::...` rules.
     matches = []
-    for header, body in re.findall(r'([^{}]+)\{([^{}]*)\}', css, re.S):
+    for header, body in re.findall(r'([^{}]+)\{([^{}]*)\}', css_rules, re.S):
         selectors = [part.strip() for part in header.split(',')]
         if selector in selectors:
             matches.append(body)
