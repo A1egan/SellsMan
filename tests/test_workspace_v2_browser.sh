@@ -57,6 +57,24 @@ grep -q '"narrowControlsPresent":true' /tmp/sellsman-board-probe.html
 grep -q '"narrowButtonScrollWorks":true' /tmp/sellsman-board-probe.html
 grep -q '"narrowColumnCount":5' /tmp/sellsman-board-probe.html
 
+# Runtime drag probe: the card must move/save immediately without a synchronous
+# whole-board render, while at most one idle reconciliation may happen afterward.
+DRAG_COMMON=(--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --virtual-time-budget=9000 --window-size=1500,1000)
+"$CHROME" "${DRAG_COMMON[@]}" --dump-dom 'http://127.0.0.1:8765/tests/board_drag_probe.html' >/tmp/sellsman-drag-probe.html 2>/tmp/sellsman-drag-probe.err
+printf 'Board drag probe: '
+grep -o '{"[^<]*}' /tmp/sellsman-drag-probe.html | head -1 || { echo 'no JSON result'; tail -80 /tmp/sellsman-drag-probe.html; }
+grep -q 'id="result-done"' /tmp/sellsman-drag-probe.html
+grep -q '"optimizedLayerLoaded":true' /tmp/sellsman-drag-probe.html
+grep -q '"dragClassDuring":true' /tmp/sellsman-drag-probe.html
+grep -q '"pointerEventsDuring":"none"' /tmp/sellsman-drag-probe.html
+grep -q '"activeHighlightsDuring":1' /tmp/sellsman-drag-probe.html
+grep -q '"movedImmediately":true' /tmp/sellsman-drag-probe.html
+grep -q '"renderCallsImmediate":0' /tmp/sellsman-drag-probe.html
+grep -q '"dragClassAfterDrop":false' /tmp/sellsman-drag-probe.html
+grep -q '"highlightCountAfterDrop":0' /tmp/sellsman-drag-probe.html
+grep -q '"persistedImmediately":true' /tmp/sellsman-drag-probe.html
+grep -q '"persistedAfterIdle":true' /tmp/sellsman-drag-probe.html
+
 mkdir -p /tmp/workspace-v2-shots
 "$CHROME" "${COMMON[@]}" --window-size=1440,900 --screenshot=/tmp/workspace-v2-shots/home-1440.png 'http://127.0.0.1:8765/#home' >/dev/null 2>/tmp/sellsman-shot-home.err
 "$CHROME" "${COMMON[@]}" --window-size=1920,1080 --screenshot=/tmp/workspace-v2-shots/home-1920.png 'http://127.0.0.1:8765/#home' >/dev/null 2>/tmp/sellsman-shot-home-wide.err
