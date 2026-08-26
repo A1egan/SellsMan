@@ -5,7 +5,8 @@ css = Path('assets/workspace-v2.css').read_text(encoding='utf-8')
 
 
 def block(selector: str) -> str:
-    match = re.search(re.escape(selector) + r'\s*\{([^}]*)\}', css, re.S)
+    # A selector can be the first item in a comma-separated selector group.
+    match = re.search(re.escape(selector) + r'[^\{]*\{([^}]*)\}', css, re.S)
     assert match, f'missing selector: {selector}'
     return match.group(1)
 
