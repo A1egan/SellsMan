@@ -33,29 +33,33 @@
             const structuralMoved = board.scrollLeft > 100;
 
             board.scrollLeft = 0;
-            const leftButton = doc.getElementById('workspaceBoardScrollLeft');
-            const rightButton = doc.getElementById('workspaceBoardScrollRight');
-            const controlsPresent = !!(leftButton && rightButton);
-            if (rightButton) rightButton.click();
-
             setTimeout(() => {
-              finish({
-                clientWidth: board.clientWidth,
-                scrollWidth: board.scrollWidth,
-                maxScroll,
-                directAfter: structuralMoved ? maxScroll : board.scrollLeft,
-                canOverflow: maxScroll > 100,
-                directScrollWorks: structuralMoved,
-                bottomVisible: boardRect.bottom <= viewRect.bottom + 1,
-                lastColumnVisibleAfterDirectScroll: lastRect.left < boardRect.right && lastRect.right > boardRect.left,
-                controlsPresent,
-                buttonScrollWorks: board.scrollLeft > 100,
-                buttonAfter: board.scrollLeft,
-                columnCount: columns.length,
-                boardBottom: Math.round(boardRect.bottom),
-                viewBottom: Math.round(viewRect.bottom)
-              }, true);
-            }, 700);
+              const leftButton = doc.getElementById('workspaceBoardScrollLeft');
+              const rightButton = doc.getElementById('workspaceBoardScrollRight');
+              const controlsPresent = !!(leftButton && rightButton);
+              const rightEnabledBeforeClick = !!(rightButton && !rightButton.disabled);
+              if (rightButton) rightButton.click();
+
+              setTimeout(() => {
+                finish({
+                  clientWidth: board.clientWidth,
+                  scrollWidth: board.scrollWidth,
+                  maxScroll,
+                  directAfter: structuralMoved ? maxScroll : board.scrollLeft,
+                  canOverflow: maxScroll > 100,
+                  directScrollWorks: structuralMoved,
+                  bottomVisible: boardRect.bottom <= viewRect.bottom + 1,
+                  lastColumnVisibleAfterDirectScroll: lastRect.left < boardRect.right && lastRect.right > boardRect.left,
+                  controlsPresent,
+                  rightEnabledBeforeClick,
+                  buttonScrollWorks: board.scrollLeft > 100,
+                  buttonAfter: board.scrollLeft,
+                  columnCount: columns.length,
+                  boardBottom: Math.round(boardRect.bottom),
+                  viewBottom: Math.round(viewRect.bottom)
+                }, true);
+              }, 700);
+            }, 180);
           } catch (err) {
             finish({error: String(err)}, false);
           }
