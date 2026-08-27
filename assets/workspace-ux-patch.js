@@ -288,8 +288,12 @@
 
     if (!select) return;
     const stages = getStageOptions(currentColumns(), current);
-    select.innerHTML = stages.map(item => `<option value="${item.id}">${item.name}</option>`).join('');
-    if (current && stages.some(item => item.id === current)) select.value = current;
+    const signature = `${current}|${stages.map(item => `${item.id}:${item.name}`).join('|')}`;
+    if (select.dataset.stageSignature !== signature) {
+      select.innerHTML = stages.map(item => `<option value="${item.id}">${item.name}</option>`).join('');
+      select.dataset.stageSignature = signature;
+    }
+    if (current && stages.some(item => item.id === current) && select.value !== current) select.value = current;
   }
 
   function installStageMover() {
