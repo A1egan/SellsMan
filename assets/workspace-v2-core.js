@@ -30,6 +30,13 @@
     return ROUTES.has(value) ? value : 'home';
   }
 
+  function isAuthCallbackHash(hash) {
+    const value = String(hash || '').replace(/^#/, '').trim();
+    if (!value) return false;
+    const params = new URLSearchParams(value);
+    return params.has('access_token') || params.has('refresh_token') || params.has('error') || params.has('error_description');
+  }
+
   function normalizeTask(task) {
     const src = task && typeof task === 'object' ? task : {};
     const status = STATUSES.has(src.status) ? src.status : 'active';
@@ -131,6 +138,7 @@
     PRIORITIES: Array.from(PRIORITIES),
     dateKey,
     normalizeRoute,
+    isAuthCallbackHash,
     normalizeTask,
     createTask,
     getRolloverCandidates,
@@ -147,6 +155,14 @@
   'use strict';
   if (typeof document === 'undefined' || root.__cloudSyncBundleScheduled) return;
   root.__cloudSyncBundleScheduled = true;
+
+  let preservedAuthCallbackHash = '';
+  try {
+    const currentHash = root.location && root.location.hash ? root.location.hash : '';
+    if (root.WorkspaceV2Core && root.WorkspaceV2Core.isAuthCallbackHash(currentHash)) {
+      preservedAuthCallbackHash = currentHash;
+    }
+  } catch (_) {}
 
   function loadScript(src) {
     return new Promise((resolve, reject) => {
@@ -170,6 +186,10 @@
       await loadScript('assets/cloud-sync-config.js');
       await loadScript('assets/cloud-sync-core.js');
       await loadScript('assets/cloud-sync.js');
+      if (preservedAuthCallbackHash && root.history && root.location) {
+        root.history.replaceState(null, '', root.location.pathname + root.location.search + preservedAuthCallbackHash);
+        preservedAuthCallbackHash = '';
+      }
       await loadScript('assets/cloud-sync-bootstrap.js');
     } catch (error) {
       console.error('Cloud sync bundle failed to load', error);
