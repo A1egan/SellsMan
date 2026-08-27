@@ -16,6 +16,12 @@ for asset in (
 ):
     assert asset in workspace_core, f"cloud sync bundle asset is not loaded: {asset}"
 
+assert "preservedAuthCallbackHash" in workspace_core, "Magic Link callback hash must survive Workspace route canonicalization"
+assert "isAuthCallbackHash" in workspace_core
+restore_marker = "history.replaceState(null, '', root.location.pathname + root.location.search + preservedAuthCallbackHash)"
+assert restore_marker in workspace_core, "saved auth callback hash must be restored before Supabase boots"
+assert workspace_core.index(restore_marker) < workspace_core.index("await loadScript('assets/cloud-sync-bootstrap.js')")
+
 config = read("assets/cloud-sync-config.js")
 assert "https://udfukkmzesgufuqehfpx.supabase.co" in config
 assert "sb_publishable_" in config
