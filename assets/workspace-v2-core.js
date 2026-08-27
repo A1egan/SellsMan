@@ -188,9 +188,13 @@
     css.href = 'assets/cloud-sync.css';
     document.head.appendChild(css);
     try {
+      await loadScript('assets/workspace-ux-patch.js');
       await loadScript('assets/cloud-sync-config.js');
       await loadScript('assets/cloud-sync-core.js');
       await loadScript('assets/cloud-sync.js');
+      if (root.WorkspaceUxPatch && typeof root.WorkspaceUxPatch.installCloudSyncFix === 'function') {
+        root.WorkspaceUxPatch.installCloudSyncFix();
+      }
       await loadScript('assets/cloud-sync-bootstrap.js');
     } catch (error) {
       console.error('Cloud sync bundle failed to load', error);
