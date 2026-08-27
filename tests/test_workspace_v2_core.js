@@ -5,6 +5,10 @@ assert.equal(core.normalizeRoute(''), 'home');
 assert.equal(core.normalizeRoute('#home'), 'home');
 assert.equal(core.normalizeRoute('#board'), 'board');
 assert.equal(core.normalizeRoute('#unknown'), 'home');
+assert.equal(core.isAuthCallbackHash('#access_token=abc&expires_in=3600&refresh_token=def&token_type=bearer&type=magiclink'), true);
+assert.equal(core.isAuthCallbackHash('#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid'), true);
+assert.equal(core.isAuthCallbackHash('#home'), false);
+assert.equal(core.isAuthCallbackHash('#board'), false);
 
 const planned = core.createTask({
   title: '回访 #2877',
