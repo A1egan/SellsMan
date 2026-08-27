@@ -6,6 +6,12 @@ assert.equal(core.normalizeRoute('#home'), 'home');
 assert.equal(core.normalizeRoute('#board'), 'board');
 assert.equal(core.normalizeRoute('#unknown'), 'home');
 
+assert.equal(core.isAuthCallbackHash('#access_token=abc&refresh_token=def&type=magiclink'), true);
+assert.equal(core.isAuthCallbackHash('#error=access_denied&error_description=Email+link+is+invalid'), true);
+assert.equal(core.isAuthCallbackHash('#home'), false);
+assert.equal(core.isAuthCallbackHash('#board'), false);
+assert.equal(core.isAuthCallbackHash('#unknown'), false);
+
 const planned = core.createTask({
   title: '回访 #2877',
   plannedDate: '2026-08-27',
