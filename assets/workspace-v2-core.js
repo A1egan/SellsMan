@@ -156,6 +156,14 @@
   if (typeof document === 'undefined' || root.__cloudSyncBundleScheduled) return;
   root.__cloudSyncBundleScheduled = true;
 
+  let preservedAuthCallbackHash = '';
+  try {
+    const currentHash = root.location && root.location.hash ? root.location.hash : '';
+    if (root.WorkspaceV2Core && root.WorkspaceV2Core.isAuthCallbackHash(currentHash)) {
+      preservedAuthCallbackHash = currentHash;
+    }
+  } catch (_) {}
+
   function loadScript(src) {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
@@ -178,6 +186,10 @@
       await loadScript('assets/cloud-sync-config.js');
       await loadScript('assets/cloud-sync-core.js');
       await loadScript('assets/cloud-sync.js');
+      if (preservedAuthCallbackHash && root.history && root.location) {
+        root.history.replaceState(null, '', root.location.pathname + root.location.search + preservedAuthCallbackHash);
+        preservedAuthCallbackHash = '';
+      }
       await loadScript('assets/cloud-sync-bootstrap.js');
     } catch (error) {
       console.error('Cloud sync bundle failed to load', error);
