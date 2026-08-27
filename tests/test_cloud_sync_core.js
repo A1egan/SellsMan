@@ -8,10 +8,18 @@ assert.equal(meta.ownerId, 'owner-a');
 assert.equal(core.knownRevision(meta, 'customers', 'u_1'), 7);
 assert.equal(core.knownRevision(meta, 'tags', 'missing'), 0);
 
-let q = core.enqueuePending([], { type: 'customers', id: 'u_1', op: 'upsert', expectedRevision: 7, payload: { number: '强化2群' } });
-q = core.enqueuePending(q, { type: 'customers', id: 'u_1', op: 'upsert', expectedRevision: 7, payload: { number: '进度慢刚开计组' } });
+let q = core.enqueuePending([], {
+  ownerId: 'owner-a', type: 'customers', id: 'u_1', op: 'upsert', expectedRevision: 7,
+  mutationId: 'm_first', payload: { number: '强化2群' }
+});
+q = core.enqueuePending(q, {
+  ownerId: 'owner-a', type: 'customers', id: 'u_1', op: 'upsert', expectedRevision: 7,
+  mutationId: 'm_second', payload: { number: '进度慢刚开计组' }
+});
 assert.equal(q.length, 1);
 assert.equal(q[0].payload.number, '进度慢刚开计组');
+assert.equal(q[0].ownerId, 'owner-a', 'pending work must remain bound to its authenticated owner');
+assert.equal(q[0].mutationId, 'm_second', 'newer same-record mutation must retain its identity');
 q = core.ackPending(q, 'customers', 'u_1');
 assert.equal(q.length, 0);
 
