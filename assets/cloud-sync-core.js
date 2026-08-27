@@ -56,10 +56,12 @@
     if (!TYPES.includes(keyType) || !keyId) return Array.isArray(queue) ? queue.slice() : [];
     const next = (Array.isArray(queue) ? queue : []).filter(entry => !(String(entry.type) === keyType && String(entry.id) === keyId));
     next.push(clone({
+      ownerId: String(src.ownerId || ''),
       type: keyType,
       id: keyId,
       op: src.op === 'delete' ? 'delete' : 'upsert',
       expectedRevision: Math.max(0, Math.floor(Number(src.expectedRevision) || 0)),
+      mutationId: String(src.mutationId || ''),
       payload: src.payload == null ? null : clone(src.payload),
       queuedAt: Number(src.queuedAt || Date.now()),
     }));
@@ -98,6 +100,32 @@
     };
   }
 
+  function normalizeBackupUsers(users) {
+    return (Array.isArray(users) ? users : []).map(raw => {
+      const user = raw && typeof raw === 'object' ? clone(raw) : {};
+      user.id = String(user.id || '');
+      user.number = String(user.number == null ? '' : user.number);
+      user.tags = Array.isArray(user.tags) ? user.tags.map(String) : [];
+      user.history = Array.isArray(user.history) ? user.history : [];
+      return user;
+    });
+  }
+
+  function normalizeBackupForRestore(payload, fallbackTasks) {
+    const fallback = Array.isArray(fallbackTasks) ? clone(fallbackTasks) : [];
+    if (Array.isArray(payload)) {
+      return { version: 0, users: normalizeBackupUsers(payload), tags: [], workTasks: fallback };
+    }
+    const src = payload && typeof payload === 'object' ? payload : {};
+    const version = Number(src.version || 0);
+    const users = normalizeBackupUsers(src.users);
+    const tags = Array.isArray(src.tags) ? clone(src.tags) : [];
+    const workTasks = (version === 2 || version === 3)
+      ? (Array.isArray(src.workTasks) ? clone(src.workTasks) : [])
+      : fallback;
+    return { version, users, tags, workTasks };
+  }
+
   return {
     TYPES: TYPES.slice(),
     normalizeMeta,
@@ -107,5 +135,6 @@
     setKnownRevision,
     applyRemoteRows,
     buildConflict,
+    normalizeBackupForRestore,
   };
 });
