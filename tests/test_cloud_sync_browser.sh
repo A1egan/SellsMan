@@ -16,9 +16,9 @@ sleep 1
   'http://127.0.0.1:8766/tests/cloud_sync_probe.html' >/tmp/cloudsync-probe.html 2>/tmp/cloudsync-probe.err
 
 grep -q 'id="result-done"' /tmp/cloudsync-probe.html || { tail -80 /tmp/cloudsync-probe.html; exit 1; }
-grep -q '&quot;localFirst&quot;:true' /tmp/cloudsync-probe.html
-grep -q '&quot;pendingSurvives&quot;:true' /tmp/cloudsync-probe.html
-grep -q '&quot;authSafe&quot;:true' /tmp/cloudsync-probe.html
-grep -q '&quot;focusPull&quot;:true' /tmp/cloudsync-probe.html
+grep -q '"localFirst":true' /tmp/cloudsync-probe.html
+grep -q '"pendingSurvives":true' /tmp/cloudsync-probe.html
+grep -q '"authSafe":true' /tmp/cloudsync-probe.html
+grep -q '"focusPull":true' /tmp/cloudsync-probe.html
 
 echo 'Cloud sync browser probe OK'
