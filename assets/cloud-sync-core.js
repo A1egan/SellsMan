@@ -72,6 +72,13 @@
     return (Array.isArray(queue) ? queue : []).filter(entry => !(String(entry.type) === String(type) && String(entry.id) === String(id)));
   }
 
+  function classifyRemoteRow(known, hasPending, remote) {
+    if (!hasPending) return 'apply';
+    const knownRevision = Math.max(0, Math.floor(Number(known) || 0));
+    const remoteRevision = Math.max(0, Math.floor(Number(remote) || 0));
+    return remoteRevision > knownRevision ? 'conflict' : 'skip';
+  }
+
   function applyRemoteRows(localRecords, rows) {
     const map = new Map((Array.isArray(localRecords) ? localRecords : []).map(record => [String(record.id), clone(record)]));
     const tombstones = [];
@@ -131,6 +138,7 @@
     normalizeMeta,
     enqueuePending,
     ackPending,
+    classifyRemoteRow,
     knownRevision,
     setKnownRevision,
     applyRemoteRows,
