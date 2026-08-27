@@ -82,41 +82,22 @@
 
   function activateTasks(tasks, ids, now) {
     const ts = Number.isFinite(Number(now)) ? Number(now) : Date.now();
-    return mutateSelected(tasks, ids, task => ({
-      ...task,
-      status: 'active',
-      activatedAt: ts,
-      deferredAt: 0,
-    }));
+    return mutateSelected(tasks, ids, task => ({ ...task, status: 'active', activatedAt: ts, deferredAt: 0 }));
   }
 
   function deferTasks(tasks, ids, now) {
     const ts = Number.isFinite(Number(now)) ? Number(now) : Date.now();
-    return mutateSelected(tasks, ids, task => ({
-      ...task,
-      status: 'deferred',
-      deferredAt: ts,
-    }));
+    return mutateSelected(tasks, ids, task => ({ ...task, status: 'deferred', deferredAt: ts }));
   }
 
   function completeTasks(tasks, ids, now) {
     const ts = Number.isFinite(Number(now)) ? Number(now) : Date.now();
-    return mutateSelected(tasks, ids, task => ({
-      ...task,
-      status: 'completed',
-      completedAt: ts,
-    }));
+    return mutateSelected(tasks, ids, task => ({ ...task, status: 'completed', completedAt: ts }));
   }
 
   function reopenTasks(tasks, ids, now) {
     const ts = Number.isFinite(Number(now)) ? Number(now) : Date.now();
-    return mutateSelected(tasks, ids, task => ({
-      ...task,
-      status: 'active',
-      activatedAt: ts,
-      completedAt: 0,
-      deferredAt: 0,
-    }));
+    return mutateSelected(tasks, ids, task => ({ ...task, status: 'active', activatedAt: ts, completedAt: 0, deferredAt: 0 }));
   }
 
   function sortTasks(tasks) {
@@ -161,3 +142,40 @@
     partitionTasks,
   };
 });
+
+;(function installCloudSyncBundle(root) {
+  'use strict';
+  if (typeof document === 'undefined' || root.__cloudSyncBundleScheduled) return;
+  root.__cloudSyncBundleScheduled = true;
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = false;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error(`Failed to load ${src}`));
+      document.head.appendChild(script);
+    });
+  }
+
+  async function loadBundle() {
+    if (root.__cloudSyncBundleLoaded) return;
+    root.__cloudSyncBundleLoaded = true;
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'assets/cloud-sync.css';
+    document.head.appendChild(css);
+    try {
+      await loadScript('assets/cloud-sync-config.js');
+      await loadScript('assets/cloud-sync-core.js');
+      await loadScript('assets/cloud-sync.js');
+      await loadScript('assets/cloud-sync-bootstrap.js');
+    } catch (error) {
+      console.error('Cloud sync bundle failed to load', error);
+    }
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadBundle, { once: true });
+  else loadBundle();
+})(typeof globalThis !== 'undefined' ? globalThis : window);
