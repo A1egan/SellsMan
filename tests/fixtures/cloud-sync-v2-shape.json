@@ -1,0 +1,26 @@
+{
+  "app": "A1eG4n工作台",
+  "version": 2,
+  "exportedAt": "2026-01-01T00:00:00.000Z",
+  "users": [
+    {
+      "id": "synthetic_numeric",
+      "number": "1234",
+      "column": "pending",
+      "note": "synthetic only",
+      "tags": ["tag_synthetic"],
+      "history": [{"at": 1767225600000, "result": "已记录", "note": "synthetic history"}]
+    },
+    {
+      "id": "synthetic_text",
+      "number": "强化2群",
+      "column": "replied",
+      "note": "synthetic only",
+      "tags": [],
+      "history": []
+    }
+  ],
+  "tags": [
+    {"id": "tag_synthetic", "name": "合成标签", "color": "#4f46e5"}
+  ]
+}
