@@ -1,4 +1,6 @@
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 const core = require('../assets/cloud-sync-core.js');
 
 const meta = core.normalizeMeta({ revisions: { customers: { u_1: 7 } } }, 'owner-a');
@@ -36,5 +38,25 @@ assert.equal(conflict.id, 'u_1');
 assert.equal(conflict.localPayload.note, 'local');
 assert.equal(conflict.remotePayload.note, 'remote');
 assert.equal(conflict.remoteRevision, 9);
+
+const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/cloud-sync-v2-shape.json'), 'utf8'));
+const restoredV2 = core.normalizeBackupForRestore(fixture, [{ id: 'old_task' }]);
+assert.equal(restoredV2.version, 2);
+assert.equal(restoredV2.workTasks.length, 0, 'v2 backup must restore with empty work tasks');
+assert.equal(restoredV2.users.find(user => user.id === 'synthetic_text').number, '强化2群');
+assert.equal(typeof restoredV2.users.find(user => user.id === 'synthetic_text').number, 'string');
+assert.equal(restoredV2.users[0].history[0].note, 'synthetic history');
+
+const restoredV3 = core.normalizeBackupForRestore({
+  ...fixture,
+  version: 3,
+  workTasks: [{ id: 'wt_1', title: 'synthetic task' }]
+}, []);
+assert.deepEqual(restoredV3.workTasks, [{ id: 'wt_1', title: 'synthetic task' }]);
+
+const restoredLegacy = core.normalizeBackupForRestore([{ id: 'legacy', number: 123 }], [{ id: 'keep_task' }]);
+assert.equal(restoredLegacy.version, 0);
+assert.deepEqual(restoredLegacy.workTasks, [{ id: 'keep_task' }], 'legacy array restore must not silently erase modern tasks');
+assert.equal(restoredLegacy.users[0].number, '123');
 
 console.log('cloud sync core tests OK');
