@@ -1,4 +1,8 @@
-(function (root) {
+(function(root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  root.CloudSyncCore = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function() {
   'use strict';
 
   const TYPES = ['customers', 'tags', 'work_tasks'];
@@ -7,92 +11,101 @@
     return value == null ? value : JSON.parse(JSON.stringify(value));
   }
 
-  function blankRevisions() {
-    return { customers: {}, tags: {}, work_tasks: {} };
+  function normalizeRevisionMap(raw) {
+    const out = {};
+    TYPES.forEach(type => {
+      out[type] = {};
+      const source = raw && raw[type] && typeof raw[type] === 'object' ? raw[type] : {};
+      Object.keys(source).forEach(id => {
+        const n = Number(source[id]);
+        if (Number.isFinite(n) && n >= 0) out[type][String(id)] = Math.floor(n);
+      });
+    });
+    return out;
   }
 
   function normalizeMeta(raw, ownerId) {
-    const source = raw && typeof raw === 'object' ? raw : {};
-    const revisions = blankRevisions();
-    for (const type of TYPES) {
-      const incoming = source.revisions && source.revisions[type];
-      if (!incoming || typeof incoming !== 'object') continue;
-      for (const [id, revision] of Object.entries(incoming)) {
-        const n = Number(revision);
-        if (Number.isInteger(n) && n >= 0) revisions[type][id] = n;
-      }
-    }
+    const src = raw && typeof raw === 'object' ? raw : {};
     return {
-      ownerId: ownerId || source.ownerId || '',
-      revisions,
-      lastPullAt: typeof source.lastPullAt === 'string' ? source.lastPullAt : '',
-      initializedSource: source.initializedSource || ''
+      ownerId: String(ownerId || src.ownerId || ''),
+      revisions: normalizeRevisionMap(src.revisions),
+      lastPullAt: src.lastPullAt ? String(src.lastPullAt) : '',
+      initializedSource: src.initializedSource ? String(src.initializedSource) : '',
     };
   }
 
   function knownRevision(meta, type, id) {
-    const n = meta && meta.revisions && meta.revisions[type] && meta.revisions[type][id];
-    return Number.isInteger(Number(n)) && Number(n) >= 0 ? Number(n) : 0;
+    const n = meta && meta.revisions && meta.revisions[type]
+      ? Number(meta.revisions[type][String(id)])
+      : 0;
+    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
   }
 
   function setKnownRevision(meta, type, id, revision) {
-    const next = normalizeMeta(meta, meta && meta.ownerId);
-    if (!TYPES.includes(type)) return next;
+    const out = normalizeMeta(meta, meta && meta.ownerId);
+    if (!TYPES.includes(type)) return out;
     const n = Number(revision);
-    if (!Number.isInteger(n) || n < 0) return next;
-    next.revisions[type][id] = n;
-    return next;
+    out.revisions[type][String(id)] = Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
+    return out;
   }
 
   function enqueuePending(queue, item) {
-    const next = Array.isArray(queue)
-      ? queue.filter(x => !(x && x.type === item.type && x.id === item.id))
-      : [];
-    next.push(clone(item));
+    const src = item && typeof item === 'object' ? item : {};
+    const keyType = String(src.type || '');
+    const keyId = String(src.id || '');
+    if (!TYPES.includes(keyType) || !keyId) return Array.isArray(queue) ? queue.slice() : [];
+    const next = (Array.isArray(queue) ? queue : []).filter(entry => !(String(entry.type) === keyType && String(entry.id) === keyId));
+    next.push(clone({
+      type: keyType,
+      id: keyId,
+      op: src.op === 'delete' ? 'delete' : 'upsert',
+      expectedRevision: Math.max(0, Math.floor(Number(src.expectedRevision) || 0)),
+      payload: src.payload == null ? null : clone(src.payload),
+      queuedAt: Number(src.queuedAt || Date.now()),
+    }));
     return next;
   }
 
   function ackPending(queue, type, id) {
-    return Array.isArray(queue)
-      ? queue.filter(x => !(x && x.type === type && x.id === id))
-      : [];
+    return (Array.isArray(queue) ? queue : []).filter(entry => !(String(entry.type) === String(type) && String(entry.id) === String(id)));
   }
 
   function applyRemoteRows(localRecords, rows) {
-    const map = new Map((Array.isArray(localRecords) ? localRecords : [])
-      .filter(Boolean)
-      .map(record => [record.id, clone(record)]));
+    const map = new Map((Array.isArray(localRecords) ? localRecords : []).map(record => [String(record.id), clone(record)]));
     const tombstones = [];
-    for (const row of Array.isArray(rows) ? rows : []) {
-      if (!row || !row.id) continue;
+    (Array.isArray(rows) ? rows : []).forEach(row => {
+      const id = String(row && row.id || '');
+      if (!id) return;
       if (row.deleted_at) {
-        map.delete(row.id);
-        tombstones.push(row.id);
-      } else if (row.payload && typeof row.payload === 'object') {
-        map.set(row.id, clone(row.payload));
+        map.delete(id);
+        tombstones.push({ id, revision: Number(row.revision || 0), deletedAt: String(row.deleted_at) });
+        return;
       }
-    }
+      if (row.payload && typeof row.payload === 'object') map.set(id, clone(row.payload));
+    });
     return { records: Array.from(map.values()), tombstones };
   }
 
   function buildConflict(localPayload, remoteRow) {
+    const remote = remoteRow && typeof remoteRow === 'object' ? remoteRow : {};
     return {
-      id: remoteRow && remoteRow.id || localPayload && localPayload.id || '',
-      local: clone(localPayload || null),
-      remote: clone(remoteRow && remoteRow.payload || null),
-      remoteRevision: Number(remoteRow && remoteRow.revision || 0),
-      remoteDeletedAt: remoteRow && remoteRow.deleted_at || null
+      id: String(remote.id || (localPayload && localPayload.id) || ''),
+      localPayload: clone(localPayload),
+      remotePayload: clone(remote.payload),
+      remoteRevision: Math.max(0, Math.floor(Number(remote.revision) || 0)),
+      remoteUpdatedAt: remote.updated_at ? String(remote.updated_at) : '',
+      remoteDeletedAt: remote.deleted_at ? String(remote.deleted_at) : '',
     };
   }
 
-  root.CloudSyncCore = {
-    TYPES,
+  return {
+    TYPES: TYPES.slice(),
     normalizeMeta,
     enqueuePending,
     ackPending,
     knownRevision,
     setKnownRevision,
     applyRemoteRows,
-    buildConflict
+    buildConflict,
   };
-})(typeof globalThis !== 'undefined' ? globalThis : window);
+});
