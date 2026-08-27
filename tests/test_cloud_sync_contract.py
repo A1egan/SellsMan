@@ -27,6 +27,7 @@ assert "sync_upsert_record" in sync
 assert "sync_soft_delete_record" in sync
 assert "expectedRevision" in sync
 assert "observeStoreWrite" in sync
+assert "classifyRemoteRow" in sync
 
 bootstrap = read("assets/cloud-sync-bootstrap.js")
 for text in (
@@ -59,5 +60,15 @@ assert "revokeinsert,update,deleteonpublic.customers,public.tags,public.work_tas
 assert "grant execute on function public.sync_upsert_record" in sql
 assert "grant execute on function public.sync_soft_delete_record" in sql
 assert "auth.uid()" in sql
+
+finalize_guard = read("supabase/migrations/2026082702_initialization_finalize_guard.sql")
+normalized_guard = "".join(finalize_guard.split()).lower()
+assert "frompublic.customerswhereowner_id=v_owner" in normalized_guard
+assert "frompublic.tagswhereowner_id=v_owner" in normalized_guard
+assert "frompublic.work_taskswhereowner_id=v_owner" in normalized_guard
+assert "v_customer_count<>1060" in normalized_guard
+assert "v_tag_count<>10" in normalized_guard
+assert "v_task_count<>0" in normalized_guard
+assert "initializationincomplete" in normalized_guard
 
 print("Cloud sync contract OK")
