@@ -10,6 +10,18 @@ assert.equal(core.isAuthCallbackHash('#error=access_denied&error_code=otp_expire
 assert.equal(core.isAuthCallbackHash('#home'), false);
 assert.equal(core.isAuthCallbackHash('#board'), false);
 
+const authStorage = {
+  values: new Map(),
+  setItem(key, value) { this.values.set(String(key), String(value)); },
+  getItem(key) { return this.values.has(String(key)) ? this.values.get(String(key)) : null; },
+  removeItem(key) { this.values.delete(String(key)); },
+};
+const magicHash = '#access_token=abc&refresh_token=def&token_type=bearer&type=magiclink';
+assert.equal(core.captureAuthCallbackHash(magicHash, authStorage), true);
+assert.equal(core.takeAuthCallbackHash(authStorage), magicHash);
+assert.equal(core.takeAuthCallbackHash(authStorage), '');
+assert.equal(core.captureAuthCallbackHash('#home', authStorage), false);
+
 const planned = core.createTask({
   title: '回访 #2877',
   plannedDate: '2026-08-27',
