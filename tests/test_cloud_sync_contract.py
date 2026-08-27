@@ -71,7 +71,7 @@ assert "v_tag_count<>10" in normalized_guard
 assert "v_task_count<>0" in normalized_guard
 assert "initializationincomplete" in normalized_guard
 
-hardening = read("supabase/migrations/2026082702_cloud_sync_private_rpc.sql")
+hardening = read("supabase/migrations/2026082703_cloud_sync_private_rpc.sql")
 normalized_hardening = "".join(hardening.split()).lower()
 assert "createschemaifnotexistsprivate" in normalized_hardening
 for signature in (
