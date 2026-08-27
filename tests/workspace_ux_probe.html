@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>Workspace UX probe</title></head>
+<body>
+  <pre id="result">pending</pre>
+  <iframe id="app" src="../index.html#home" style="width:1200px;height:900px;border:0"></iframe>
+  <script>
+    const frame = document.getElementById('app');
+    const result = document.getElementById('result');
+    const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+    function finish(data, ok) {
+      result.textContent = JSON.stringify(data);
+      result.id = ok ? 'result-done' : 'result-error';
+    }
+
+    setTimeout(async () => {
+      try {
+        const win = frame.contentWindow;
+        const doc = frame.contentDocument;
+        if (!win || !doc) throw new Error('workspace iframe not ready');
+
+        const topInput = doc.getElementById('workspaceQuickSearch');
+        const topClear = doc.getElementById('workspaceQuickSearchClear');
+        if (topInput) {
+          topInput.value = '测试搜索';
+          topInput.dispatchEvent(new win.Event('input', { bubbles: true }));
+        }
+        if (topClear) topClear.click();
+        const topClearPresent = !!topClear;
+        const topCleared = !!topInput && topInput.value === '';
+
+        win.location.hash = '#search';
+        await wait(350);
+        const pageInput = doc.getElementById('wsSearchInput');
+        const pageClear = doc.getElementById('wsSearchInputClear');
+        if (pageInput) {
+          pageInput.value = '2877';
+          pageInput.dispatchEvent(new win.Event('input', { bubbles: true }));
+        }
+        if (pageClear) pageClear.click();
+        const pageClearPresent = !!pageClear;
+        const pageCleared = !!pageInput && pageInput.value === '';
+
+        win.location.hash = '#board';
+        await wait(350);
+        const boardControlsPresent = !!doc.getElementById('workspaceBoardScrollControls');
+        const board = doc.getElementById('board');
+        const nativeHorizontalScrollAvailable = !!board && board.scrollWidth >= board.clientWidth;
+
+        const card = doc.querySelector('.card');
+        if (card) card.click();
+        await wait(300);
+        const stageSelect = doc.getElementById('workspaceCustomerStageSelect');
+        const stageIds = stageSelect ? Array.from(stageSelect.options).map(option => option.value) : [];
+        const stageMovePresent = !!stageSelect && ['pending','contacting','replied','lowinterest','silent'].every(id => stageIds.includes(id));
+        const oldLowButtonPresent = Array.from(doc.querySelectorAll('.detail-danger-zone button')).some(button => button.textContent.includes('移入低意向池'));
+
+        const data = {
+          topClearPresent,
+          topCleared,
+          pageClearPresent,
+          pageCleared,
+          boardControlsPresent,
+          nativeHorizontalScrollAvailable,
+          stageMovePresent,
+          stageOptionCount: stageIds.length,
+          oldLowButtonPresent,
+        };
+        finish(data,
+          topClearPresent && topCleared && pageClearPresent && pageCleared &&
+          !boardControlsPresent && nativeHorizontalScrollAvailable &&
+          stageMovePresent && stageIds.length === 5 && !oldLowButtonPresent
+        );
+      } catch (error) {
+        finish({ error: String(error) }, false);
+      }
+    }, 4200);
+  </script>
+</body>
+</html>

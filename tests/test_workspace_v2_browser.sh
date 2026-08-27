@@ -35,8 +35,8 @@ grep -q 'workspace-view active" data-view="board"' /tmp/sellsman-board.html
 grep -q '客户看板' /tmp/sellsman-board.html
 grep -q '沉默用户' /tmp/sellsman-board.html
 
-# Below the five-column desktop breakpoint, native horizontal overflow and
-# explicit mouse controls remain the fallback for narrow windows.
+# Below the five-column desktop breakpoint, native horizontal overflow remains
+# available, but the extra left/right buttons are intentionally removed.
 PROBE_COMMON=(--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --virtual-time-budget=7500 --window-size=1500,1000)
 "$CHROME" "${PROBE_COMMON[@]}" --dump-dom 'http://127.0.0.1:8765/tests/board_scroll_probe.html' >/tmp/sellsman-board-probe.html 2>/tmp/sellsman-board-probe.err
 printf 'Board scroll probe: '
@@ -47,8 +47,20 @@ grep -q '"canOverflow":true' /tmp/sellsman-board-probe.html
 grep -q '"directScrollWorks":true' /tmp/sellsman-board-probe.html
 grep -q '"bottomVisible":true' /tmp/sellsman-board-probe.html
 grep -q '"lastColumnVisibleAfterDirectScroll":true' /tmp/sellsman-board-probe.html
-grep -q '"controlsPresent":true' /tmp/sellsman-board-probe.html
-grep -q '"buttonScrollWorks":true' /tmp/sellsman-board-probe.html
+grep -q '"controlsPresent":false' /tmp/sellsman-board-probe.html
+
+"$CHROME" "${PROBE_COMMON[@]}" --dump-dom 'http://127.0.0.1:8765/tests/workspace_ux_probe.html' >/tmp/sellsman-ux-probe.html 2>/tmp/sellsman-ux-probe.err
+printf 'Workspace UX probe: '
+grep -o '{"[^<]*}' /tmp/sellsman-ux-probe.html | head -1 || { echo 'no JSON result'; tail -80 /tmp/sellsman-ux-probe.html; }
+grep -q 'id="result-done"' /tmp/sellsman-ux-probe.html
+grep -q '"topClearPresent":true' /tmp/sellsman-ux-probe.html
+grep -q '"topCleared":true' /tmp/sellsman-ux-probe.html
+grep -q '"pageClearPresent":true' /tmp/sellsman-ux-probe.html
+grep -q '"pageCleared":true' /tmp/sellsman-ux-probe.html
+grep -q '"boardControlsPresent":false' /tmp/sellsman-ux-probe.html
+grep -q '"stageMovePresent":true' /tmp/sellsman-ux-probe.html
+grep -q '"stageOptionCount":5' /tmp/sellsman-ux-probe.html
+grep -q '"oldLowButtonPresent":false' /tmp/sellsman-ux-probe.html
 
 mkdir -p /tmp/workspace-v2-shots
 "$CHROME" "${COMMON[@]}" --window-size=1440,900 --screenshot=/tmp/workspace-v2-shots/home-1440.png 'http://127.0.0.1:8765/#home' >/dev/null 2>/tmp/sellsman-shot-home.err
