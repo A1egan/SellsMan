@@ -213,14 +213,20 @@
       if (!id) return;
       const pendingItem = pending.find(item => item.type === type && item.id === id);
       const known = core.knownRevision(meta, type, id);
-      if (pendingItem && Number(row.revision || 0) > known) { conflicts.push([pendingItem, row]); return; }
+      const decision = core.classifyRemoteRow(known, !!pendingItem, Number(row.revision || 0));
+      if (decision === 'conflict') { conflicts.push([pendingItem, row]); return; }
+      if (decision === 'skip') return;
       applicable.push(row);
       meta = core.setKnownRevision(meta, type, id, Number(row.revision || 0));
     });
     const applied = core.applyRemoteRows(readStore(type), applicable);
     writeRemoteStore(type, applied.records);
     writeMeta(meta);
-    conflicts.forEach(([item, row]) => addConflict(item, row));
+    if (conflicts.length) {
+      const conflictKeys = new Set(conflicts.map(([item]) => `${item.type}:${item.id}`));
+      writePending(readPending().filter(item => !conflictKeys.has(`${item.type}:${item.id}`)));
+      conflicts.forEach(([item, row]) => addConflict(item, row));
+    }
   }
 
   async function pull(reason) {
