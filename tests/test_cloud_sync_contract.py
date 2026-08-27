@@ -71,4 +71,21 @@ assert "v_tag_count<>10" in normalized_guard
 assert "v_task_count<>0" in normalized_guard
 assert "initializationincomplete" in normalized_guard
 
+hardening = read("supabase/migrations/2026082702_cloud_sync_private_rpc.sql")
+normalized_hardening = "".join(hardening.split()).lower()
+assert "createschemaifnotexistsprivate" in normalized_hardening
+for signature in (
+    "sync_upsert_record(text,text,jsonb,bigint)",
+    "sync_soft_delete_record(text,text,bigint)",
+    "sync_initialize_record(text,text,jsonb)",
+    "sync_finalize_initialization(integer)",
+):
+    assert f"alterfunctionpublic.{signature}setschemaprivate" in normalized_hardening
+assert normalized_hardening.count("securityinvoker") >= 4
+assert "grantusageonschemaprivatetoauthenticated" in normalized_hardening
+assert "revokeallonschemaprivatefrompublic,anon" in normalized_hardening
+assert "grant execute on function public.sync_upsert_record" in hardening
+assert "grant execute on function public.sync_soft_delete_record" in hardening
+assert "notify pgrst, 'reload schema'" in hardening
+
 print("Cloud sync contract OK")
