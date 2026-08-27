@@ -20,6 +20,7 @@ jobs:
       - run: python tests/test_ui_contract.py
       - run: python tests/test_workspace_v2_contract.py
       - run: python tests/test_workspace_v2_readability.py
+      - run: python tests/test_cloud_sync_contract.py
       - run: node tests/test_workspace_v2_core.js
       - run: node tests/test_cloud_sync_core.js
       - run: node tests/test_cloud_sync_adapter.js
