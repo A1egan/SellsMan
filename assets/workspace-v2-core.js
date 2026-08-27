@@ -30,6 +30,13 @@
     return ROUTES.has(value) ? value : 'home';
   }
 
+  function isAuthCallbackHash(hash) {
+    const value = String(hash || '').replace(/^#/, '').trim();
+    if (!value) return false;
+    const params = new URLSearchParams(value);
+    return params.has('access_token') || params.has('refresh_token') || params.has('error') || params.has('error_description');
+  }
+
   function normalizeTask(task) {
     const src = task && typeof task === 'object' ? task : {};
     const status = STATUSES.has(src.status) ? src.status : 'active';
@@ -131,6 +138,7 @@
     PRIORITIES: Array.from(PRIORITIES),
     dateKey,
     normalizeRoute,
+    isAuthCallbackHash,
     normalizeTask,
     createTask,
     getRolloverCandidates,
