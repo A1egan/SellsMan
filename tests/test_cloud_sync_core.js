@@ -23,6 +23,11 @@ assert.equal(q[0].mutationId, 'm_second', 'newer same-record mutation must retai
 q = core.ackPending(q, 'customers', 'u_1');
 assert.equal(q.length, 0);
 
+assert.equal(core.classifyRemoteRow(7, false, 7), 'apply');
+assert.equal(core.classifyRemoteRow(7, true, 7), 'skip', 'same-revision remote row must not overwrite a local pending edit');
+assert.equal(core.classifyRemoteRow(7, true, 6), 'skip', 'older remote row must not overwrite a local pending edit');
+assert.equal(core.classifyRemoteRow(7, true, 8), 'conflict', 'newer remote row must surface a conflict');
+
 const updatedMeta = core.setKnownRevision(meta, 'tags', 'tag_1', 3);
 assert.equal(core.knownRevision(updatedMeta, 'tags', 'tag_1'), 3);
 assert.equal(core.knownRevision(meta, 'tags', 'tag_1'), 0, 'setKnownRevision must not mutate input');
