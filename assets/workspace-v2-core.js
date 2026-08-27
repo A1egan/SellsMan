@@ -30,6 +30,14 @@
     return ROUTES.has(value) ? value : 'home';
   }
 
+  function isAuthCallbackHash(hash) {
+    const value = String(hash || '').replace(/^#/, '');
+    if (!value) return false;
+    const params = new URLSearchParams(value);
+    return params.has('access_token') || params.has('refresh_token') ||
+      (params.has('error') && (params.has('error_description') || params.has('error_code')));
+  }
+
   function normalizeTask(task) {
     const src = task && typeof task === 'object' ? task : {};
     const status = STATUSES.has(src.status) ? src.status : 'active';
@@ -131,6 +139,7 @@
     PRIORITIES: Array.from(PRIORITIES),
     dateKey,
     normalizeRoute,
+    isAuthCallbackHash,
     normalizeTask,
     createTask,
     getRolloverCandidates,
@@ -148,6 +157,11 @@
   if (typeof document === 'undefined' || root.__cloudSyncBundleScheduled) return;
   root.__cloudSyncBundleScheduled = true;
 
+  const core = root.WorkspaceV2Core;
+  const authCallbackHash = core && core.isAuthCallbackHash(root.location && root.location.hash)
+    ? root.location.hash
+    : '';
+
   function loadScript(src) {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
@@ -159,9 +173,16 @@
     });
   }
 
+  function restoreAuthCallbackHash() {
+    if (!authCallbackHash || !root.location || root.location.hash === authCallbackHash) return;
+    if (!root.history || typeof root.history.replaceState !== 'function') return;
+    root.history.replaceState(null, '', root.location.pathname + root.location.search + authCallbackHash);
+  }
+
   async function loadBundle() {
     if (root.__cloudSyncBundleLoaded) return;
     root.__cloudSyncBundleLoaded = true;
+    restoreAuthCallbackHash();
     const css = document.createElement('link');
     css.rel = 'stylesheet';
     css.href = 'assets/cloud-sync.css';
