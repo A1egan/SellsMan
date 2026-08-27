@@ -24,6 +24,7 @@ jobs:
       - run: node tests/test_workspace_v2_core.js
       - run: node tests/test_cloud_sync_core.js
       - run: node tests/test_cloud_sync_adapter.js
+      - run: node tests/test_workspace_ux_patch.js
       - run: bash tests/test_cloud_sync_browser.sh
       - run: bash tests/test_board_five_column_runtime.sh
       - run: bash tests/test_board_drag_runtime.sh
