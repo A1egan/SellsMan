@@ -161,6 +161,44 @@
     emitStatus();
   }
 
+  async function recoverUnknownRevisionDelete(item) {
+    let lookup;
+    try {
+      lookup = await state.client.from(item.type)
+        .select('id,payload,revision,updated_at,deleted_at')
+        .eq('id', item.id)
+        .maybeSingle();
+    } catch (error) {
+      return { status: 'error', error: String(error && error.message || error || 'delete recovery lookup failed') };
+    }
+    if (!lookup || lookup.error) {
+      return { status: 'error', error: String(lookup && lookup.error && lookup.error.message || 'delete recovery lookup failed') };
+    }
+
+    const remoteRow = lookup.data || null;
+    const plan = core.planUnknownRevisionDelete(remoteRow);
+    if (plan.action === 'error') return { status: 'error', error: 'invalid cloud revision during delete recovery' };
+
+    if (plan.revision > 0) {
+      let meta = readMeta();
+      meta = core.setKnownRevision(meta, item.type, item.id, plan.revision);
+      writeMeta(meta);
+    }
+
+    if (plan.action === 'ack') {
+      writePending(core.ackPendingMutation(readPending(), item.mutationId));
+      if (remoteRow && remoteRow.updated_at) state.lastSyncedAt = remoteRow.updated_at;
+      return { status: 'ack' };
+    }
+
+    const latest = readPending();
+    if (!latest.some(entry => String(entry.mutationId || '') === String(item.mutationId || ''))) {
+      return { status: 'superseded' };
+    }
+    writePending(core.promotePendingMutationRevision(latest, item.mutationId, plan.revision));
+    return { status: 'retry' };
+  }
+
   async function flushPending() {
     const ownerId = currentOwnerId();
     if (state.flushing || !state.client || !ownerId || !state.initialized) return;
@@ -172,6 +210,13 @@
         const queue = readPending();
         const item = queue.find(entry => !entry.ownerId || entry.ownerId === ownerId);
         if (!item) break;
+
+        if (item.op === 'delete' && Number(item.expectedRevision || 0) < 1) {
+          const recovered = await recoverUnknownRevisionDelete(item);
+          if (recovered.status === 'error') { state.error = recovered.error; break; }
+          continue;
+        }
+
         const fn = item.op === 'delete' ? 'sync_soft_delete_record' : 'sync_upsert_record';
         const args = item.op === 'delete'
           ? { p_record_type: item.type, p_record_id: item.id, p_expected_revision: Number(item.expectedRevision || 0) }
@@ -183,7 +228,7 @@
         const data = response.data || {};
         if (data.status === 'conflict') {
           addConflict(item, data.record || null);
-          writePending(readPending().filter(entry => entry.mutationId !== item.mutationId));
+          writePending(core.ackPendingMutation(readPending(), item.mutationId));
           continue;
         }
         if (data.status !== 'ok' || !data.record) { state.error = 'invalid sync response'; break; }
