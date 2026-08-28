@@ -96,18 +96,24 @@ function queryClient(remoteRow, onRpc) {
   assert.ok(fromCalls >= 3, 'focus should trigger a three-table pull');
 
   // Regression: a local record that disappeared before it ever received a cloud revision
-  // must not poison the whole queue with sync_soft_delete_record(expectedRevision=0).
+  // must not poison the queue, and later valid uploads must still run in the same flush.
   localStorage.setItem(pendingKey, JSON.stringify([
-    { ownerId:'owner-a', type:'work_tasks', id:'wt_transient', op:'delete', expectedRevision:0, mutationId:'m_absent', payload:null, queuedAt:Date.now() }
+    { ownerId:'owner-a', type:'work_tasks', id:'wt_transient', op:'delete', expectedRevision:0, mutationId:'m_absent', payload:null, queuedAt:Date.now() },
+    { ownerId:'owner-a', type:'customers', id:'u_after', op:'upsert', expectedRevision:2, mutationId:'m_after', payload:{id:'u_after',number:'9001',note:'must upload'}, queuedAt:Date.now()+1 }
   ]));
-  let absentRpcCalls = 0;
+  let followupRpcCalls = 0;
   CloudSync._setTestState({
-    client:queryClient(null, async () => { absentRpcCalls++; return {data:null,error:new Error('delete RPC must not run for an absent row')}; }),
+    client:queryClient(null, async (fn, args) => {
+      followupRpcCalls++;
+      assert.equal(fn, 'sync_upsert_record', 'absent zero-revision delete must be acknowledged without calling delete RPC');
+      assert.equal(args.p_record_id, 'u_after', 'flush must continue to the later valid mutation');
+      return {data:{status:'ok',record:{id:'u_after',payload:args.p_payload,revision:3,updated_at:'2026-08-28T06:00:30Z',deleted_at:null}},error:null};
+    }),
     session:{user:{id:'owner-a',email:'a@example.com'}}, initialized:true, error:'', flushing:false
   });
   await CloudSync.flushPending();
-  assert.equal(JSON.parse(localStorage.getItem(pendingKey)).length, 0, 'absent cloud row should safely acknowledge the zero-revision delete');
-  assert.equal(absentRpcCalls, 0, 'zero-revision delete must probe cloud before calling delete RPC');
+  assert.equal(JSON.parse(localStorage.getItem(pendingKey)).length, 0, 'self-healed delete and later valid upload should both leave the queue');
+  assert.equal(followupRpcCalls, 1, 'only the later valid upsert should require an RPC call');
 
   // If the cloud row exists, recover its real revision and then soft-delete with optimistic locking.
   localStorage.setItem(pendingKey, JSON.stringify([
