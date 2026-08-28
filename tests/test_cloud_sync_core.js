@@ -37,6 +37,16 @@ assert.deepEqual(
   [{ ...raceQueue[0], mutationId: 'm_newer' }],
   'a newer same-record mutation must survive acknowledgement of an older mutation'
 );
+assert.deepEqual(
+  core.promotePendingMutationRevision(raceQueue, 'm_old_delete', 4),
+  [{ ...raceQueue[0], expectedRevision: 4 }, raceQueue[1]],
+  'recovery should promote only the exact delete mutation to the recovered revision'
+);
+assert.deepEqual(
+  core.promotePendingMutationRevision([{ ...raceQueue[0], mutationId: 'm_newer' }], 'm_old_delete', 4),
+  [{ ...raceQueue[0], mutationId: 'm_newer' }],
+  'a newer same-record mutation must not inherit an older delete probe revision'
+);
 
 assert.deepEqual(
   core.planUnknownRevisionDelete(null),
