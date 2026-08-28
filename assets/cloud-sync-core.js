@@ -72,6 +72,29 @@
     return (Array.isArray(queue) ? queue : []).filter(entry => !(String(entry.type) === String(type) && String(entry.id) === String(id)));
   }
 
+  function ackPendingMutation(queue, mutationId) {
+    const id = String(mutationId || '');
+    if (!id) return Array.isArray(queue) ? queue.slice() : [];
+    return (Array.isArray(queue) ? queue : []).filter(entry => String(entry && entry.mutationId || '') !== id);
+  }
+
+  function promotePendingMutationRevision(queue, mutationId, revision) {
+    const id = String(mutationId || '');
+    const n = Math.max(0, Math.floor(Number(revision) || 0));
+    return (Array.isArray(queue) ? queue : []).map(entry => {
+      if (String(entry && entry.mutationId || '') !== id) return clone(entry);
+      return { ...clone(entry), expectedRevision: n };
+    });
+  }
+
+  function planUnknownRevisionDelete(remoteRow) {
+    if (!remoteRow) return { action: 'ack', revision: 0 };
+    const revision = Math.max(0, Math.floor(Number(remoteRow.revision) || 0));
+    if (revision < 1) return { action: 'error', revision: 0 };
+    if (remoteRow.deleted_at) return { action: 'ack', revision };
+    return { action: 'delete', revision };
+  }
+
   function classifyRemoteRow(known, hasPending, remote) {
     if (!hasPending) return 'apply';
     const knownRevision = Math.max(0, Math.floor(Number(known) || 0));
@@ -138,6 +161,9 @@
     normalizeMeta,
     enqueuePending,
     ackPending,
+    ackPendingMutation,
+    promotePendingMutationRevision,
+    planUnknownRevisionDelete,
     classifyRemoteRow,
     knownRevision,
     setKnownRevision,
