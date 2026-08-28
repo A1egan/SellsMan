@@ -23,6 +23,52 @@ assert.equal(q[0].mutationId, 'm_second', 'newer same-record mutation must retai
 q = core.ackPending(q, 'customers', 'u_1');
 assert.equal(q.length, 0);
 
+const raceQueue = [
+  { type: 'work_tasks', id: 'wt_1', mutationId: 'm_old_delete', op: 'delete', expectedRevision: 0 },
+  { type: 'customers', id: 'u_2', mutationId: 'm_other', op: 'upsert', expectedRevision: 2 },
+];
+assert.deepEqual(
+  core.ackPendingMutation(raceQueue, 'm_old_delete'),
+  [raceQueue[1]],
+  'recovery must acknowledge only the exact mutation it inspected'
+);
+assert.deepEqual(
+  core.ackPendingMutation([{ ...raceQueue[0], mutationId: 'm_newer' }], 'm_old_delete'),
+  [{ ...raceQueue[0], mutationId: 'm_newer' }],
+  'a newer same-record mutation must survive acknowledgement of an older mutation'
+);
+assert.deepEqual(
+  core.promotePendingMutationRevision(raceQueue, 'm_old_delete', 4),
+  [{ ...raceQueue[0], expectedRevision: 4 }, raceQueue[1]],
+  'recovery should promote only the exact delete mutation to the recovered revision'
+);
+assert.deepEqual(
+  core.promotePendingMutationRevision([{ ...raceQueue[0], mutationId: 'm_newer' }], 'm_old_delete', 4),
+  [{ ...raceQueue[0], mutationId: 'm_newer' }],
+  'a newer same-record mutation must not inherit an older delete probe revision'
+);
+
+assert.deepEqual(
+  core.planUnknownRevisionDelete(null),
+  { action: 'ack', revision: 0 },
+  'deleting a never-uploaded record is already satisfied when cloud has no row'
+);
+assert.deepEqual(
+  core.planUnknownRevisionDelete({ id: 'wt_1', revision: 4, deleted_at: null }),
+  { action: 'delete', revision: 4 },
+  'an existing cloud row must be deleted using its real revision'
+);
+assert.deepEqual(
+  core.planUnknownRevisionDelete({ id: 'wt_1', revision: 5, deleted_at: '2026-08-28T06:00:00Z' }),
+  { action: 'ack', revision: 5 },
+  'an existing tombstone already satisfies the local delete'
+);
+assert.deepEqual(
+  core.planUnknownRevisionDelete({ id: 'wt_1', revision: 0, deleted_at: null }),
+  { action: 'error', revision: 0 },
+  'an impossible cloud row without a positive revision must not be silently accepted'
+);
+
 assert.equal(core.classifyRemoteRow(7, false, 7), 'apply');
 assert.equal(core.classifyRemoteRow(7, true, 7), 'skip', 'same-revision remote row must not overwrite a local pending edit');
 assert.equal(core.classifyRemoteRow(7, true, 6), 'skip', 'older remote row must not overwrite a local pending edit');
