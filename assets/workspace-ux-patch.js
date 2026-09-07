@@ -17,6 +17,7 @@
 
   let workspaceInstalled = false;
   let cloudInstalled = false;
+  let batchPatched = false;
   let searchObserver = null;
   let stageObserver = null;
   let boardObserver = null;
@@ -307,6 +308,58 @@
     }
   }
 
+  function batchModeActive() {
+    const doc = root.document;
+    const toggle = doc && doc.getElementById('batchToggleBtn');
+    return !!toggle && String(toggle.textContent || '').includes('退出批量');
+  }
+
+  function ensureBatchExitControl() {
+    const doc = root.document;
+    if (!doc) return null;
+    const bar = doc.getElementById('batchBar');
+    const actions = bar && bar.querySelector('.batch-bar-right');
+    if (!bar || !actions) return null;
+
+    const clearButton = Array.from(actions.querySelectorAll('button')).find(button => {
+      const handler = String(button.getAttribute('onclick') || '');
+      return handler.includes('clearSelection');
+    });
+    if (clearButton) clearButton.textContent = '清空选择';
+
+    let exitButton = doc.getElementById('batchExitBtn');
+    if (!exitButton) {
+      exitButton = doc.createElement('button');
+      exitButton.id = 'batchExitBtn';
+      exitButton.type = 'button';
+      exitButton.className = 'batch-btn batch-btn-gray';
+      exitButton.textContent = '退出批量编辑';
+      exitButton.addEventListener('click', () => {
+        if (batchModeActive() && typeof root.toggleBatchMode === 'function') root.toggleBatchMode();
+      });
+      actions.appendChild(exitButton);
+    }
+    return exitButton;
+  }
+
+  function installBatchModeExit() {
+    if (batchPatched || !root.document || typeof root.updateBatchBar !== 'function') return false;
+    batchPatched = true;
+    const originalUpdateBatchBar = root.updateBatchBar;
+
+    root.updateBatchBar = function() {
+      const result = originalUpdateBatchBar.apply(this, arguments);
+      ensureBatchExitControl();
+      const bar = root.document.getElementById('batchBar');
+      if (bar && batchModeActive()) bar.classList.add('show');
+      return result;
+    };
+
+    ensureBatchExitControl();
+    root.updateBatchBar();
+    return true;
+  }
+
   function install() {
     if (workspaceInstalled || !root.document) return;
     workspaceInstalled = true;
@@ -314,6 +367,7 @@
     installSearchClears();
     installBoardCleanup();
     installStageMover();
+    installBatchModeExit();
     installCloudSyncFix();
   }
 
@@ -322,6 +376,7 @@
     shouldStampSuccessfulSync,
     decorateSyncStatus,
     getStageOptions,
+    installBatchModeExit,
     installCloudSyncFix,
     install,
   };
