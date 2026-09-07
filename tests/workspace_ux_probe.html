@@ -56,6 +56,28 @@
         const stageMovePresent = !!stageSelect && ['pending','contacting','replied','lowinterest','silent'].every(id => stageIds.includes(id));
         const oldLowButtonPresent = Array.from(doc.querySelectorAll('.detail-danger-zone button')).some(button => button.textContent.includes('移入低意向池'));
 
+        if (typeof win.closeTagModal === 'function') win.closeTagModal();
+        win.WorkspaceV2.batchAction('select');
+        await wait(350);
+        const batchBar = doc.getElementById('batchBar');
+        const batchBarVisibleEmpty = !!batchBar && batchBar.classList.contains('show');
+        const batchExit = doc.getElementById('batchExitBtn');
+        const batchExitPresent = !!batchExit && batchExit.textContent.includes('退出批量');
+        const firstBatchCheckbox = doc.querySelector('.card-checkbox');
+        if (firstBatchCheckbox) firstBatchCheckbox.click();
+        await wait(220);
+        const selectedCountBeforeExit = doc.getElementById('selectedCount')?.textContent === '1';
+        const exitButton = doc.getElementById('batchExitBtn');
+        if (exitButton) exitButton.click();
+        await wait(220);
+        const batchBarHiddenAfterExit = !!batchBar && !batchBar.classList.contains('show');
+        const selectedClearedAfterExit = doc.getElementById('selectedCount')?.textContent === '0';
+        const batchCheckboxesGone = !doc.querySelector('.card-checkbox');
+        const normalCard = doc.querySelector('.card');
+        if (normalCard) normalCard.click();
+        await wait(220);
+        const normalCardOpensDrawer = doc.getElementById('tagModal')?.classList.contains('show') === true;
+
         const data = {
           topClearPresent,
           topCleared,
@@ -66,11 +88,20 @@
           stageMovePresent,
           stageOptionCount: stageIds.length,
           oldLowButtonPresent,
+          batchBarVisibleEmpty,
+          batchExitPresent,
+          selectedCountBeforeExit,
+          batchBarHiddenAfterExit,
+          selectedClearedAfterExit,
+          batchCheckboxesGone,
+          normalCardOpensDrawer,
         };
         finish(data,
           topClearPresent && topCleared && pageClearPresent && pageCleared &&
           !boardControlsPresent && nativeHorizontalScrollAvailable &&
-          stageMovePresent && stageIds.length === 5 && !oldLowButtonPresent
+          stageMovePresent && stageIds.length === 5 && !oldLowButtonPresent &&
+          batchBarVisibleEmpty && batchExitPresent && selectedCountBeforeExit &&
+          batchBarHiddenAfterExit && selectedClearedAfterExit && batchCheckboxesGone && normalCardOpensDrawer
         );
       } catch (error) {
         finish({ error: String(error) }, false);
